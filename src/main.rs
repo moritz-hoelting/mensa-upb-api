@@ -9,12 +9,21 @@ use mensa_upb_api::{Canteen, MenuCache};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use strum::IntoEnumIterator;
+use tracing::{debug, error, info, level_filters::LevelFilter};
+use tracing_subscriber::EnvFilter;
 
-#[actix_web::main]
+#[tokio::main]
 async fn main() -> io::Result<()> {
+    let env_filter = EnvFilter::builder()
+        .with_default_directive(LevelFilter::WARN.into())
+        .from_env()
+        .expect("Invalid filter")
+        .add_directive("mensa_upb_api=debug".parse().unwrap());
+    tracing_subscriber::fmt().with_env_filter(env_filter).init();
+
     match dotenvy::dotenv() {
-        Ok(_) => println!("Loaded .env file"),
-        Err(dotenvy::Error::LineParse(..)) => eprintln!("Malformed .env file"),
+        Ok(_) => debug!("Loaded .env file"),
+        Err(dotenvy::Error::LineParse(..)) => error!("Malformed .env file"),
         Err(_) => {}
     }
 
@@ -49,7 +58,7 @@ async fn main() -> io::Result<()> {
 
     let menu_cache = MenuCache::default();
 
-    println!("Starting server on {}:{}", interface, port);
+    info!("Starting server on {}:{}", interface, port);
 
     HttpServer::new(move || {
         let cors = allowed_cors

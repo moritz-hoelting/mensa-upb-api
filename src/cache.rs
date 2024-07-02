@@ -4,6 +4,7 @@ use chrono::{NaiveDate, Utc};
 use futures::StreamExt;
 use itertools::Itertools;
 use tokio::sync::RwLock;
+use tracing::{debug, instrument};
 
 use crate::{Canteen, Menu};
 
@@ -21,6 +22,7 @@ impl MenuCache {
             .await
     }
 
+    #[instrument(skip(self))]
     pub async fn get(&self, canteen: Canteen, date: NaiveDate) -> Option<Menu> {
         let query = (date, canteen);
         let (is_in_cache, is_cache_too_large) = {
@@ -34,6 +36,8 @@ impl MenuCache {
             let cache = self.cache.read().await;
             Some(cache.get(&query)?.clone())
         } else {
+            debug!("Not in cache, fetching from network");
+
             let menu = Menu::new(date, canteen).await.ok()?;
 
             self.cache.write().await.insert(query, menu.clone());
