@@ -49,6 +49,8 @@ async fn main() -> io::Result<()> {
 
     let menu_cache = MenuCache::default();
 
+    println!("Starting server on {}:{}", interface, port);
+
     HttpServer::new(move || {
         let cors = allowed_cors
             .iter()
