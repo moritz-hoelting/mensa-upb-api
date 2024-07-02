@@ -58,10 +58,10 @@ async fn index() -> impl Responder {
     }))
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 struct MenuQuery {
     #[serde(rename = "d")]
-    days_ahead: Option<u32>,
+    days_ahead: Option<String>,
 }
 
 #[get("/menu/{canteen}")]
@@ -77,12 +77,21 @@ async fn menu_today(
         .collect_vec();
     if canteens.iter().all(Result::is_ok) {
         let canteens = canteens.into_iter().filter_map(Result::ok).collect_vec();
-        let days_ahead = query.days_ahead.unwrap_or(0);
-        let date = (Utc::now() + CDuration::days(days_ahead as i64)).date_naive();
+        let days_ahead = query
+            .days_ahead
+            .as_ref()
+            .map_or(Ok(0), |d| d.parse::<i64>());
 
+        if let Ok(days_ahead) = days_ahead {
+            let date = (Utc::now() + CDuration::days(days_ahead)).date_naive();
         let menu = cache.get_combined(&canteens, date).await;
 
         HttpResponse::Ok().json(menu)
+        } else {
+            HttpResponse::BadRequest().json(json!({
+                "error": "Invalid days query"
+            }))
+        }
     } else {
         HttpResponse::BadRequest().json(json!({
             "error": "Invalid canteen identifier",
