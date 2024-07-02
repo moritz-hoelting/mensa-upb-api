@@ -1,5 +1,6 @@
 use std::{env, io, str::FromStr};
 
+use actix_cors::Cors;
 use actix_governor::{Governor, GovernorConfigBuilder};
 use actix_web::{get, web, App, HttpResponse, HttpServer, Responder};
 use chrono::{Duration as CDuration, Utc};
@@ -11,8 +12,10 @@ use strum::IntoEnumIterator;
 
 #[actix_web::main]
 async fn main() -> io::Result<()> {
-    if dotenvy::dotenv().is_ok() {
-        println!("Loaded .env file");
+    match dotenvy::dotenv() {
+        Ok(_) => println!("Loaded .env file"),
+        Err(dotenvy::Error::LineParse(..)) => eprintln!("Malformed .env file"),
+        Err(_) => {}
     }
 
     let interface = env::var("API_INTERFACE").unwrap_or("127.0.0.1".to_string());
@@ -29,6 +32,15 @@ async fn main() -> io::Result<()> {
         .and_then(|s| s.parse::<u32>().ok())
         .unwrap_or(5);
 
+    let allowed_cors = env::var("API_CORS_ALLOWED")
+        .map(|val| {
+            val.split(',')
+                .map(|domain| domain.trim().to_string())
+                .collect_vec()
+        })
+        .ok()
+        .unwrap_or_default();
+
     let governor_conf = GovernorConfigBuilder::default()
         .per_second(seconds_replenish)
         .burst_size(burst_size)
@@ -38,8 +50,16 @@ async fn main() -> io::Result<()> {
     let menu_cache = MenuCache::default();
 
     HttpServer::new(move || {
+        let cors = allowed_cors
+            .iter()
+            .fold(Cors::default(), |cors, domain| cors.allowed_origin(domain))
+            .send_wildcard()
+            .allow_any_method()
+            .allow_any_header()
+            .max_age(3600);
         App::new()
             .wrap(Governor::new(&governor_conf))
+            .wrap(cors)
             .app_data(web::Data::new(menu_cache.clone()))
             .service(index)
             .service(menu_today)
@@ -84,9 +104,9 @@ async fn menu_today(
 
         if let Ok(days_ahead) = days_ahead {
             let date = (Utc::now() + CDuration::days(days_ahead)).date_naive();
-        let menu = cache.get_combined(&canteens, date).await;
+            let menu = cache.get_combined(&canteens, date).await;
 
-        HttpResponse::Ok().json(menu)
+            HttpResponse::Ok().json(menu)
         } else {
             HttpResponse::BadRequest().json(json!({
                 "error": "Invalid days query"
