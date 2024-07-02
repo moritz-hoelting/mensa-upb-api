@@ -1,0 +1,18 @@
+[package]
+name = "mensa-upb-api"
+description = "A web scraper api for the canteens of the University of Paderborn"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+actix-web = "4.8.0"
+chrono = "0.4.38"
+const_format = "0.2.32"
+dotenvy = "0.15.7"
+itertools = "0.13.0"
+reqwest = "0.12.5"
+scraper = "0.19.0"
+serde = { version = "1.0.203", features = ["derive"] }
+serde_json = "1.0.120"
+strum = { version = "0.26.3", features = ["derive"] }
+tokio = { version = "1.38.0", features = ["full"] }
