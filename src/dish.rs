@@ -54,7 +54,7 @@ impl Dish {
 
 impl Dish {
     pub fn from_element(element: ElementRef, canteen: Canteen) -> Option<Self> {
-        let html_name_selector = scraper::Selector::parse(".desc h4").unwrap();
+        let html_name_selector = scraper::Selector::parse(".desc h4").ok()?;
         let name = element
             .select(&html_name_selector)
             .next()?
@@ -64,11 +64,11 @@ impl Dish {
             .trim()
             .to_string();
 
-        let img_selector = scraper::Selector::parse(".img img").unwrap();
+        let img_selector = scraper::Selector::parse(".img img").ok()?;
         let img_src_path = element.select(&img_selector).next()?.value().attr("src")?;
         let img_src = format!("https://www.studierendenwerk-pb.de/{}", img_src_path);
 
-        let html_price_selector = scraper::Selector::parse(".desc .price").unwrap();
+        let html_price_selector = scraper::Selector::parse(".desc .price").ok()?;
         let mut prices = element
             .select(&html_price_selector)
             .filter_map(|price| {
@@ -91,7 +91,7 @@ impl Dish {
             })
             .collect::<Vec<_>>();
 
-        let html_extras_selector = scraper::Selector::parse(".desc .buttons > *").unwrap();
+        let html_extras_selector = scraper::Selector::parse(".desc .buttons > *").ok()?;
         let extras = element
             .select(&html_extras_selector)
             .filter_map(|extra| extra.value().attr("title").map(|title| title.to_string()))

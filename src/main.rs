@@ -4,7 +4,7 @@ use actix_governor::{Governor, GovernorConfigBuilder};
 use actix_web::{get, web, App, HttpResponse, HttpServer, Responder};
 use chrono::{Duration as CDuration, Utc};
 use itertools::Itertools;
-use mensa_upb_api::{Canteen, Menu};
+use mensa_upb_api::{Canteen, MenuCache};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use strum::IntoEnumIterator;
@@ -35,9 +35,12 @@ async fn main() -> io::Result<()> {
         .finish()
         .unwrap();
 
+    let menu_cache = MenuCache::default();
+
     HttpServer::new(move || {
         App::new()
             .wrap(Governor::new(&governor_conf))
+            .app_data(web::Data::new(menu_cache.clone()))
             .service(index)
             .service(menu_today)
     })
@@ -62,7 +65,11 @@ struct MenuQuery {
 }
 
 #[get("/menu/{canteen}")]
-async fn menu_today(path: web::Path<String>, query: web::Query<MenuQuery>) -> impl Responder {
+async fn menu_today(
+    cache: web::Data<MenuCache>,
+    path: web::Path<String>,
+    query: web::Query<MenuQuery>,
+) -> impl Responder {
     let canteens = path
         .into_inner()
         .split(',')
@@ -71,13 +78,9 @@ async fn menu_today(path: web::Path<String>, query: web::Query<MenuQuery>) -> im
     if canteens.iter().all(Result::is_ok) {
         let canteens = canteens.into_iter().filter_map(Result::ok).collect_vec();
         let days_ahead = query.days_ahead.unwrap_or(0);
+        let date = (Utc::now() + CDuration::days(days_ahead as i64)).date_naive();
 
-        let menu = Menu::new(
-            (Utc::now() + CDuration::days(days_ahead as i64)).date_naive(),
-            &canteens,
-        )
-        .await
-        .unwrap();
+        let menu = cache.get_combined(&canteens, date).await;
 
         HttpResponse::Ok().json(menu)
     } else {

@@ -3,7 +3,7 @@ use std::str::FromStr;
 use const_format::concatcp;
 use strum::EnumIter;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, EnumIter)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, EnumIter, Hash)]
 pub enum Canteen {
     Forum,
     Academica,
