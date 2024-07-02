@@ -1,5 +1,6 @@
 use std::{env, io, str::FromStr};
 
+use actix_governor::{Governor, GovernorConfigBuilder};
 use actix_web::{get, web, App, HttpResponse, HttpServer, Responder};
 use chrono::{Duration as CDuration, Utc};
 use itertools::Itertools;
@@ -19,11 +20,30 @@ async fn main() -> io::Result<()> {
         .ok()
         .and_then(|p| p.parse::<u16>().ok())
         .unwrap_or(8080);
+    let seconds_replenish = env::var("API_RATE_LIMIT_SECONDS")
+        .ok()
+        .and_then(|s| s.parse::<u64>().ok())
+        .unwrap_or(5);
+    let burst_size = env::var("API_RATE_LIMIT_BURST")
+        .ok()
+        .and_then(|s| s.parse::<u32>().ok())
+        .unwrap_or(5);
 
-    HttpServer::new(|| App::new().service(index).service(menu_today))
-        .bind((interface.as_str(), port))?
-        .run()
-        .await
+    let governor_conf = GovernorConfigBuilder::default()
+        .per_second(seconds_replenish)
+        .burst_size(burst_size)
+        .finish()
+        .unwrap();
+
+    HttpServer::new(move || {
+        App::new()
+            .wrap(Governor::new(&governor_conf))
+            .service(index)
+            .service(menu_today)
+    })
+    .bind((interface.as_str(), port))?
+    .run()
+    .await
 }
 
 #[get("/")]
