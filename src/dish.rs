@@ -7,12 +7,11 @@ use crate::Canteen;
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Dish {
     name: String,
-    image_src: String,
+    image_src: Option<String>,
     price_students: Option<String>,
     price_employees: Option<String>,
     price_guests: Option<String>,
     extras: Vec<String>,
-    #[serde(skip)]
     canteens: Vec<Canteen>,
 }
 
@@ -65,8 +64,11 @@ impl Dish {
             .to_string();
 
         let img_selector = scraper::Selector::parse(".img img").ok()?;
-        let img_src_path = element.select(&img_selector).next()?.value().attr("src")?;
-        let img_src = format!("https://www.studierendenwerk-pb.de/{}", img_src_path);
+        let img_src = element.select(&img_selector).next().and_then(|el| {
+            el.value()
+                .attr("src")
+                .map(|img_src_path| format!("https://www.studierendenwerk-pb.de/{}", img_src_path))
+        });
 
         let html_price_selector = scraper::Selector::parse(".desc .price").ok()?;
         let mut prices = element

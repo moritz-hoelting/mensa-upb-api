@@ -2,32 +2,40 @@
     <div id="main_dishes"></div>
 </div>
 <script type="text/javascript">
-    fetch("http://localhost:8080/menu/forum")
+    fetch(
+        "http://localhost:8080/menu/forum" +
+            (new Date().getHours() >= 15 ? "?d=1" : "")
+    )
         .then((d) => d.json())
         .then((menu) => {
-            const main_dishes_container = /** @type {HTMLDivElement} */ (document.querySelector(
-                "#mensa #main_dishes"
-            ));
+            const main_dishes_container = /** @type {HTMLDivElement} */ (
+                document.querySelector("#mensa #main_dishes")
+            );
             main_dishes_container.style.display = "grid";
-            main_dishes_container.style.gridTemplateColumns = "repeat(auto-fit, minmax(150px, 1fr))";
+            main_dishes_container.style.gridTemplateColumns =
+                "repeat(auto-fit, minmax(150px, 1fr))";
             main_dishes_container.style.gridGap = "10px";
-            if (
-                main_dishes_container != null &&
-                menu != null &&
-                menu.main_dishes != null
-            ) {
-                for (let dish of menu.main_dishes) {
+            if (main_dishes_container != null && menu != null) {
+                const main_dishes = menu.main_dishes ?? [];
+                const side_dishes = menu.side_dishes ?? [];
+                const desserts = menu.desserts ?? [];
+                for (let dish of [
+                    ...main_dishes,
+                    ...side_dishes,
+                    ...desserts,
+                ]) {
                     let dish_el = document.createElement("div");
                     dish_el.classList.add("dish");
                     dish_el.style.display = "flex";
                     dish_el.style.flexDirection = "column";
                     dish_el.style.alignItems = "center";
-                    let img_el = document.createElement("img");
-                    img_el.src = dish.image_src;
-                    img_el.style.maxWidth = "80%";
-                    img_el.style.objectFit = "cover";
-                    
-                    dish_el.appendChild(img_el);
+                    if (dish.image_src != null) {
+                        let img_el = document.createElement("img");
+                        img_el.src = dish.image_src;
+                        img_el.style.maxWidth = "80%";
+                        img_el.style.objectFit = "cover";
+                        dish_el.appendChild(img_el);
+                    }
                     let name_el = document.createElement("p");
                     name_el.classList.add("dish-name");
                     name_el.innerText = dish.name;

@@ -1,9 +1,12 @@
 use std::str::FromStr;
 
 use const_format::concatcp;
+use serde::{Deserialize, Serialize};
 use strum::EnumIter;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, EnumIter, Hash)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, EnumIter, Hash, Serialize, Deserialize,
+)]
 pub enum Canteen {
     Forum,
     Academica,
