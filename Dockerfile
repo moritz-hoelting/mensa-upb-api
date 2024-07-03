@@ -38,6 +38,10 @@ EOF
 # stage.
 FROM debian:bullseye-slim AS final
 
+# Install ca certificates
+RUN apt-get update -y && \
+    apt-get install -y ca-certificates
+
 # Create a non-privileged user that the app will run under.
 # See https://docs.docker.com/develop/develop-images/dockerfile_best-practices/#user
 ARG UID=10001
