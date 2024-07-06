@@ -1,6 +1,11 @@
 [package]
 name = "mensa-upb-api"
 description = "A web scraper api for the canteens of the University of Paderborn"
+license = "MIT"
+authors = ["Moritz Hölting"]
+repository = "https://github.com/moritz-hoelting/mensa-upb-api"
+publish = false
+readme = "README.md"
 version = "0.1.1"
 edition = "2021"
 
