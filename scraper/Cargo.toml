@@ -1,0 +1,26 @@
+[package]
+name = "mensa-upb-scraper"
+description = "A web scraper for the canteens of the University of Paderborn"
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+readme.workspace = true
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+anyhow = { workspace = true }
+chrono = { workspace = true }
+const_format = "0.2.33"
+dotenvy = { workspace = true }
+futures = "0.3.31"
+itertools = { workspace = true }
+num-bigint = "0.4.6"
+reqwest = { version = "0.12.9", default-features = false, features = ["charset", "rustls-tls", "http2"] }
+scraper = "0.21.0"
+sqlx = { workspace = true, features = ["runtime-tokio-rustls", "postgres", "migrate", "chrono", "uuid", "bigdecimal"] }
+strum = { workspace = true, features = ["derive"] }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true, features = ["fmt", "std", "env-filter", "registry", "json", "tracing-log"] }

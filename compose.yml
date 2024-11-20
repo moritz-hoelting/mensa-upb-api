@@ -1,9 +1,39 @@
 services:
-  server:
-    build:
-      context: .
-      target: final
-    ports:
-      - 8080:8080
+    api:
+        build: 
+          context: .
+          dockerfile: ./web-api/Dockerfile
+        image: mensa-upb-api:latest
+        ports:
+            - 8080:8080
+        environment:
+            - DATABASE_URL=postgres://pguser:pgpass@postgres-mensa-upb/postgres
+            - "RUST_LOG=none,mensa_upb_api=info"
+            - TZ=Europe/Berlin
+        depends_on:
+            - postgres
 
+    scraper:
+        build: 
+          context: .
+          dockerfile: ./scraper/Dockerfile
+        image: mensa-upb-scraper:latest
+        environment:
+            - DATABASE_URL=postgres://pguser:pgpass@postgres-mensa-upb/postgres
+            - "RUST_LOG=none,mensa_upb_scraper=info"
+            - TZ=Europe/Berlin
+        depends_on:
+            - postgres
 
+    postgres:
+        container_name: postgres-mensa-upb
+        image: postgres:17-alpine
+        environment:
+            - POSTGRES_USER=pguser
+            - POSTGRES_PASSWORD=pgpass
+            - POSTGRES_DB=postgres
+        volumes:
+            - db:/var/lib/postgresql/data
+
+volumes:
+    db:

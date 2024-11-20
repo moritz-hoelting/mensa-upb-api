@@ -1,0 +1,23 @@
+services:
+    scraper:
+        build: .
+        image: mensa-upb-scraper:latest
+        environment:
+            - DATABASE_URL=postgres://pguser:pgpass@postgres-mensa-upb-scraper/postgres
+            - "RUST_LOG=none,mensa_upb_scraper=info"
+            - TZ=Europe/Berlin
+        depends_on:
+            - postgres
+
+    postgres:
+        container_name: postgres-mensa-upb-scraper
+        image: postgres:17-alpine
+        environment:
+            - POSTGRES_USER=pguser
+            - POSTGRES_PASSWORD=pgpass
+            - POSTGRES_DB=postgres
+        volumes:
+            - db:/var/lib/postgresql/data
+
+volumes:
+    db:

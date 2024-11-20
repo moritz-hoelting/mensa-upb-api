@@ -27,6 +27,8 @@ async fn main() -> Result<()> {
     let db = PgPoolOptions::new()
         .connect_lazy(&env::var("DATABASE_URL").expect("missing DATABASE_URL env variable"))?;
 
+    sqlx::migrate!("../migrations").run(&db).await?;
+
     let interface = env::var("API_INTERFACE").unwrap_or("127.0.0.1".to_string());
     let port = env::var("API_PORT")
         .ok()
