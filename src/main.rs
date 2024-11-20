@@ -1,19 +1,16 @@
-use std::{env, io, str::FromStr};
+use std::env;
 
 use actix_cors::Cors;
 use actix_governor::{Governor, GovernorConfigBuilder};
-use actix_web::{get, web, App, HttpResponse, HttpServer, Responder};
-use chrono::{Duration as CDuration, Utc};
+use actix_web::{web, App, HttpServer};
+use anyhow::Result;
 use itertools::Itertools;
-use mensa_upb_api::{Canteen, MenuCache};
-use serde::{Deserialize, Serialize};
-use serde_json::json;
-use strum::IntoEnumIterator;
+use sqlx::postgres::PgPoolOptions;
 use tracing::{debug, error, info, level_filters::LevelFilter};
 use tracing_subscriber::EnvFilter;
 
 #[tokio::main]
-async fn main() -> io::Result<()> {
+async fn main() -> Result<()> {
     let env_filter = EnvFilter::builder()
         .with_default_directive(LevelFilter::WARN.into())
         .from_env()
@@ -26,6 +23,9 @@ async fn main() -> io::Result<()> {
         Err(dotenvy::Error::LineParse(..)) => error!("Malformed .env file"),
         Err(_) => {}
     }
+
+    let db = PgPoolOptions::new()
+        .connect_lazy(&env::var("DATABASE_URL").expect("missing DATABASE_URL env variable"))?;
 
     let interface = env::var("API_INTERFACE").unwrap_or("127.0.0.1".to_string());
     let port = env::var("API_PORT")
@@ -51,12 +51,10 @@ async fn main() -> io::Result<()> {
         .unwrap_or_default();
 
     let governor_conf = GovernorConfigBuilder::default()
-        .per_second(seconds_replenish)
+        .seconds_per_request(seconds_replenish)
         .burst_size(burst_size)
         .finish()
         .unwrap();
-
-    let menu_cache = MenuCache::default();
 
     info!("Starting server on {}:{}", interface, port);
 
@@ -71,62 +69,12 @@ async fn main() -> io::Result<()> {
         App::new()
             .wrap(Governor::new(&governor_conf))
             .wrap(cors)
-            .app_data(web::Data::new(menu_cache.clone()))
-            .service(index)
-            .service(menu_today)
+            .app_data(web::Data::new(db.clone()))
+            .configure(mensa_upb_api::endpoints::configure)
     })
     .bind((interface.as_str(), port))?
     .run()
-    .await
-}
+    .await?;
 
-#[get("/")]
-async fn index() -> impl Responder {
-    HttpResponse::Ok().json(json!({
-        "version": env!("CARGO_PKG_VERSION"),
-        "description": env!("CARGO_PKG_DESCRIPTION"),
-        "supportedCanteens": Canteen::iter().map(|c| c.get_identifier().to_string()).collect_vec(),
-    }))
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
-struct MenuQuery {
-    #[serde(rename = "d")]
-    days_ahead: Option<String>,
-}
-
-#[get("/menu/{canteen}")]
-async fn menu_today(
-    cache: web::Data<MenuCache>,
-    path: web::Path<String>,
-    query: web::Query<MenuQuery>,
-) -> impl Responder {
-    let canteens = path
-        .into_inner()
-        .split(',')
-        .map(Canteen::from_str)
-        .collect_vec();
-    if canteens.iter().all(Result::is_ok) {
-        let canteens = canteens.into_iter().filter_map(Result::ok).collect_vec();
-        let days_ahead = query
-            .days_ahead
-            .as_ref()
-            .map_or(Ok(0), |d| d.parse::<i64>());
-
-        if let Ok(days_ahead) = days_ahead {
-            let date = (Utc::now() + CDuration::days(days_ahead)).date_naive();
-            let menu = cache.get_combined(&canteens, date).await;
-
-            HttpResponse::Ok().json(menu)
-        } else {
-            HttpResponse::BadRequest().json(json!({
-                "error": "Invalid days query"
-            }))
-        }
-    } else {
-        HttpResponse::BadRequest().json(json!({
-            "error": "Invalid canteen identifier",
-            "invalid": canteens.into_iter().filter_map(|c| c.err()).collect_vec()
-        }))
-    }
+    Ok(())
 }

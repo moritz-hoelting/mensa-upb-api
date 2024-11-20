@@ -6,24 +6,22 @@ authors = ["Moritz Hölting"]
 repository = "https://github.com/moritz-hoelting/mensa-upb-api"
 publish = false
 readme = "README.md"
-version = "0.1.1"
+version = "0.2.0"
 edition = "2021"
 
 [dependencies]
 actix-cors = "0.7.0"
-actix-governor = { version = "0.5.0", features = ["log"] }
-actix-web = "4.8.0"
-anyhow = "1.0.86"
-chrono = "0.4.38"
-const_format = "0.2.32"
+actix-governor = { version = "0.7.0", features = ["log"] }
+actix-web = "4.9.0"
+anyhow = "1.0.93"
+bigdecimal = { version = "0.4.6", features = ["serde"] }
+chrono = { version = "0.4.38", features = ["serde"] }
 dotenvy = "0.15.7"
-futures = "0.3.30"
 itertools = "0.13.0"
-reqwest = "0.12.5"
-scraper = "0.19.0"
-serde = { version = "1.0.203", features = ["derive"] }
-serde_json = "1.0.120"
+serde = { version = "1.0.215", features = ["derive"] }
+serde_json = "1.0.133"
 strum = { version = "0.26.3", features = ["derive"] }
-tokio = { version = "1.38.0", features = ["full"] }
+sqlx = { version = "0.8.2", features = ["runtime-tokio-rustls", "postgres", "migrate", "chrono", "uuid", "bigdecimal"] }
+tokio = { version = "1.41.1", features = ["macros", "rt-multi-thread"] }
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }

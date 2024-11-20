@@ -1,13 +1,12 @@
-mod cache;
 mod canteen;
 mod dish;
+pub mod endpoints;
 mod menu;
 
 use std::{error::Error, fmt::Display};
 
-pub use cache::MenuCache;
 pub use canteen::Canteen;
-pub use dish::Dish;
+pub use dish::{Dish, DishPrices};
 pub use menu::Menu;
 
 #[derive(Debug, Clone)]

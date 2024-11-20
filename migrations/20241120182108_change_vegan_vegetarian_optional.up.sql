@@ -1,0 +1,11 @@
+-- Add up migration script here
+
+ALTER TABLE meals 
+    ALTER COLUMN vegan TYPE BOOLEAN USING (COALESCE(vegan, FALSE)),
+    ALTER COLUMN vegan SET DEFAULT FALSE,
+    ALTER COLUMN vegan SET NOT NULL;
+
+ALTER TABLE meals 
+    ALTER COLUMN vegetarian TYPE BOOLEAN USING (COALESCE(vegetarian, FALSE)),
+    ALTER COLUMN vegetarian SET DEFAULT FALSE,
+    ALTER COLUMN vegetarian SET NOT NULL

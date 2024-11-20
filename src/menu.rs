@@ -1,19 +1,70 @@
-use anyhow::Result;
+use std::str::FromStr as _;
+
 use chrono::NaiveDate;
 use serde::{Deserialize, Serialize};
+use sqlx::PgPool;
 
-use crate::{Canteen, CustomError, Dish};
+use crate::{Canteen, Dish, DishPrices};
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct Menu {
+    date: NaiveDate,
     main_dishes: Vec<Dish>,
     side_dishes: Vec<Dish>,
     desserts: Vec<Dish>,
 }
 
 impl Menu {
-    pub async fn new(day: NaiveDate, canteen: Canteen) -> Result<Self> {
-        scrape_menu(canteen, day).await
+    pub async fn query(db: &PgPool, date: NaiveDate, canteens: &[Canteen]) -> sqlx::Result<Self> {
+        let canteens = canteens
+            .iter()
+            .map(|c| c.get_identifier().to_string())
+            .collect::<Vec<_>>();
+        let result = sqlx::query!("SELECT name, array_agg(DISTINCT canteen ORDER BY canteen) AS canteens, dish_type, image_src, price_students, price_employees, price_guests, vegan, vegetarian 
+                FROM meals WHERE date = $1 AND canteen = ANY($2) 
+                GROUP BY name, dish_type, image_src, price_students, price_employees, price_guests, vegan, vegetarian
+                ORDER BY name", 
+                date, &canteens)
+            .fetch_all(db)
+            .await?;
+
+        let mut main_dishes = Vec::new();
+        let mut side_dishes = Vec::new();
+        let mut desserts = Vec::new();
+
+        for row in result {
+            let dish = Dish {
+                name: row.name,
+                image_src: row.image_src,
+                canteens: row.canteens.map_or_else(Vec::new, |canteens| {
+                    canteens
+                        .iter()
+                        .map(|canteen| Canteen::from_str(canteen).expect("Invalid database entry"))
+                        .collect()
+                }),
+                vegan: row.vegan,
+                vegetarian: row.vegetarian,
+                price: DishPrices {
+                    students: row.price_students.with_prec(5).with_scale(2),
+                    employees: row.price_employees.with_prec(5).with_scale(2),
+                    guests: row.price_guests.with_prec(5).with_scale(2),
+                },
+            };
+            if row.dish_type == "main" {
+                main_dishes.push(dish);
+            } else if row.dish_type == "side" {
+                side_dishes.push(dish);
+            } else if row.dish_type == "dessert" {
+                desserts.push(dish);
+            }
+        }
+
+        Ok(Self {
+            date,
+            main_dishes,
+            side_dishes,
+            desserts,
+        })
     }
 
     pub fn get_main_dishes(&self) -> &[Dish] {
@@ -55,59 +106,11 @@ impl Menu {
             }
         }
 
-        main_dishes.sort_by(|a, b| a.get_name().cmp(b.get_name()));
-        side_dishes.sort_by(|a, b| a.get_name().cmp(b.get_name()));
-        desserts.sort_by(|a, b| a.get_name().cmp(b.get_name()));
-
         Self {
+            date: self.date,
             main_dishes,
             side_dishes,
             desserts,
         }
     }
-}
-
-async fn scrape_menu(canteen: Canteen, day: NaiveDate) -> Result<Menu> {
-    let url = canteen.get_url();
-    let client = reqwest::Client::new();
-    let request_builder = client
-        .post(url)
-        .query(&[("tx_pamensa_mensa[date]", day.format("%Y-%m-%d").to_string())]);
-    let response = request_builder.send().await?;
-    let html_content = response.text().await?;
-
-    let document = scraper::Html::parse_document(&html_content);
-
-    let html_main_dishes_selector = scraper::Selector::parse(
-        "table.table-dishes.main-dishes > tbody > tr.odd > td.description > div.row",
-    )
-    .map_err(|_| CustomError::from("Failed to parse selector"))?;
-    let html_main_dishes = document.select(&html_main_dishes_selector);
-    let main_dishes = html_main_dishes
-        .filter_map(|dish| Dish::from_element(dish, canteen))
-        .collect::<Vec<_>>();
-
-    let html_side_dishes_selector = scraper::Selector::parse(
-        "table.table-dishes.side-dishes > tbody > tr.odd > td.description > div.row",
-    )
-    .map_err(|_| CustomError::from("Failed to parse selector"))?;
-    let html_side_dishes = document.select(&html_side_dishes_selector);
-    let side_dishes = html_side_dishes
-        .filter_map(|dish| Dish::from_element(dish, canteen))
-        .collect::<Vec<_>>();
-
-    let html_desserts_selector = scraper::Selector::parse(
-        "table.table-dishes.soups > tbody > tr.odd > td.description > div.row",
-    )
-    .map_err(|_| CustomError::from("Failed to parse selector"))?;
-    let html_desserts = document.select(&html_desserts_selector);
-    let desserts = html_desserts
-        .filter_map(|dish| Dish::from_element(dish, canteen))
-        .collect::<Vec<_>>();
-
-    Ok(Menu {
-        main_dishes,
-        side_dishes,
-        desserts,
-    })
 }
