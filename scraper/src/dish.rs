@@ -34,7 +34,7 @@ impl Dish {
         self.extras.contains(&"vegan".to_string())
     }
     pub fn is_vegetarian(&self) -> bool {
-        self.extras.contains(&"vegetarian".to_string())
+        self.extras.contains(&"vegetarisch".to_string())
     }
     pub fn get_extras(&self) -> &[String] {
         &self.extras

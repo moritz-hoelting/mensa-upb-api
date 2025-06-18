@@ -18,7 +18,7 @@ futures = "0.3.31"
 itertools = { workspace = true }
 num-bigint = "0.4.6"
 reqwest = { version = "0.12.9", default-features = false, features = ["charset", "rustls-tls", "http2"] }
-scraper = "0.21.0"
+scraper = "0.23.1"
 sqlx = { workspace = true, features = ["runtime-tokio-rustls", "postgres", "migrate", "chrono", "uuid", "bigdecimal"] }
 strum = { workspace = true, features = ["derive"] }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
