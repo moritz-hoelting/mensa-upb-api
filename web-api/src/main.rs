@@ -63,7 +63,13 @@ async fn main() -> Result<()> {
     HttpServer::new(move || {
         let cors = allowed_cors
             .iter()
-            .fold(Cors::default(), |cors, domain| cors.allowed_origin(domain))
+            .fold(Cors::default(), |cors, domain| {
+                if domain == "*" {
+                    cors.allow_any_origin()
+                } else {
+                    cors.allowed_origin(domain)
+                }
+            })
             .send_wildcard()
             .allow_any_method()
             .allow_any_header()
