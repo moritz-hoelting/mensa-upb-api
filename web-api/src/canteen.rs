@@ -45,7 +45,7 @@ impl FromStr for Canteen {
             "zm2" => Ok(Self::ZM2),
             "basilica" => Ok(Self::Basilica),
             "atrium" => Ok(Self::Atrium),
-            invalid => Err(format!("Invalid canteen identifier: {}", invalid)),
+            invalid => Err(format!("Invalid canteen identifier: {invalid}")),
         }
     }
 }

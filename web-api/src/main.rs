@@ -1,10 +1,11 @@
 use std::env;
 
 use actix_cors::Cors;
-use actix_governor::{Governor, GovernorConfigBuilder};
+use actix_governor::Governor;
 use actix_web::{web, App, HttpServer};
 use anyhow::Result;
 use itertools::Itertools;
+use mensa_upb_api::get_governor;
 use sqlx::postgres::PgPoolOptions;
 use tracing::{debug, error, info, level_filters::LevelFilter};
 use tracing_subscriber::EnvFilter;
@@ -41,7 +42,7 @@ async fn main() -> Result<()> {
     let burst_size = env::var("API_RATE_LIMIT_BURST")
         .ok()
         .and_then(|s| s.parse::<u32>().ok())
-        .unwrap_or(5);
+        .unwrap_or(20);
 
     let allowed_cors = env::var("API_CORS_ALLOWED")
         .map(|val| {
@@ -52,11 +53,7 @@ async fn main() -> Result<()> {
         .ok()
         .unwrap_or_default();
 
-    let governor_conf = GovernorConfigBuilder::default()
-        .seconds_per_request(seconds_replenish)
-        .burst_size(burst_size)
-        .finish()
-        .unwrap();
+    let governor_conf = get_governor(seconds_replenish, burst_size);
 
     info!("Starting server on {}:{}", interface, port);
 
