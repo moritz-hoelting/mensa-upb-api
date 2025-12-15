@@ -1,30 +1,52 @@
+use std::sync::LazyLock;
+
 use itertools::Itertools;
-use scraper::ElementRef;
+use num_bigint::BigInt;
+use scraper::{ElementRef, Selector};
 use shared::DishType;
+use sqlx::types::BigDecimal;
+
+static IMG_SELECTOR: LazyLock<Selector> =
+    LazyLock::new(|| Selector::parse(".img img").expect("Failed to parse selector"));
+static HTML_PRICE_SELECTOR: LazyLock<Selector> =
+    LazyLock::new(|| Selector::parse(".desc .price").expect("Failed to parse selector"));
+static HTML_EXTRAS_SELECTOR: LazyLock<Selector> =
+    LazyLock::new(|| Selector::parse(".desc .buttons > *").expect("Failed to parse selector"));
+static HTML_NUTRITIONS_SELECTOR: LazyLock<Selector> =
+    LazyLock::new(|| Selector::parse(".nutritions > p").expect("Failed to parse selector"));
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Dish {
     name: String,
     image_src: Option<String>,
-    price_students: Option<String>,
-    price_employees: Option<String>,
-    price_guests: Option<String>,
+    price_students: BigDecimal,
+    price_employees: BigDecimal,
+    price_guests: BigDecimal,
     extras: Vec<String>,
     dish_type: DishType,
+    pub nutrition_values: NutritionValues,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct NutritionValues {
+    pub kjoule: Option<i64>,
+    pub protein: Option<BigDecimal>,
+    pub carbs: Option<BigDecimal>,
+    pub fat: Option<BigDecimal>,
 }
 
 impl Dish {
     pub fn get_name(&self) -> &str {
         &self.name
     }
-    pub fn get_price_students(&self) -> Option<&str> {
-        self.price_students.as_deref()
+    pub fn get_price_students(&self) -> &BigDecimal {
+        &self.price_students
     }
-    pub fn get_price_employees(&self) -> Option<&str> {
-        self.price_employees.as_deref()
+    pub fn get_price_employees(&self) -> &BigDecimal {
+        &self.price_employees
     }
-    pub fn get_price_guests(&self) -> Option<&str> {
-        self.price_guests.as_deref()
+    pub fn get_price_guests(&self) -> &BigDecimal {
+        &self.price_guests
     }
     pub fn get_image_src(&self) -> Option<&str> {
         self.image_src.as_deref()
@@ -51,8 +73,12 @@ impl Dish {
                 == self.extras.iter().sorted().collect_vec()
     }
 
-    pub fn from_element(element: ElementRef, dish_type: DishType) -> Option<Self> {
-        let html_name_selector = scraper::Selector::parse(".desc h4").ok()?;
+    pub fn from_element(
+        element: ElementRef,
+        details: ElementRef,
+        dish_type: DishType,
+    ) -> Option<Self> {
+        let html_name_selector = Selector::parse(".desc h4").ok()?;
         let name = element
             .select(&html_name_selector)
             .next()?
@@ -62,16 +88,14 @@ impl Dish {
             .trim()
             .to_string();
 
-        let img_selector = scraper::Selector::parse(".img img").ok()?;
-        let img_src = element.select(&img_selector).next().and_then(|el| {
+        let img_src = element.select(&IMG_SELECTOR).next().and_then(|el| {
             el.value()
                 .attr("src")
                 .map(|img_src_path| format!("https://www.studierendenwerk-pb.de/{}", img_src_path))
         });
 
-        let html_price_selector = scraper::Selector::parse(".desc .price").ok()?;
         let mut prices = element
-            .select(&html_price_selector)
+            .select(&HTML_PRICE_SELECTOR)
             .filter_map(|price| {
                 let price_for = price.first_child().and_then(|strong| {
                     strong.first_child().and_then(|text_element| {
@@ -92,11 +116,45 @@ impl Dish {
             })
             .collect::<Vec<_>>();
 
-        let html_extras_selector = scraper::Selector::parse(".desc .buttons > *").ok()?;
         let extras = element
-            .select(&html_extras_selector)
+            .select(&HTML_EXTRAS_SELECTOR)
             .filter_map(|extra| extra.value().attr("title").map(|title| title.to_string()))
             .collect::<Vec<_>>();
+
+        let nutritions_element = details.select(&HTML_NUTRITIONS_SELECTOR).next();
+        let nutrition_values = if let Some(nutritions_element) = nutritions_element {
+            let mut kjoule = None;
+            let mut protein = None;
+            let mut carbs = None;
+            let mut fat = None;
+
+            for s in nutritions_element.text() {
+                let s = s.trim();
+                if !s.is_empty() {
+                    if let Some(rest) = s.strip_prefix("Brennwert = ") {
+                        kjoule = rest
+                            .split_whitespace()
+                            .next()
+                            .and_then(|num_str| num_str.parse().ok());
+                    } else if let Some(rest) = s.strip_prefix("Eiweiß = ") {
+                        protein = grams_to_bigdecimal(rest);
+                    } else if let Some(rest) = s.strip_prefix("Kohlenhydrate = ") {
+                        carbs = grams_to_bigdecimal(rest);
+                    } else if let Some(rest) = s.strip_prefix("Fett = ") {
+                        fat = grams_to_bigdecimal(rest);
+                    }
+                }
+            }
+
+            NutritionValues {
+                kjoule,
+                protein,
+                carbs,
+                fat,
+            }
+        } else {
+            NutritionValues::default()
+        };
 
         Some(Self {
             name,
@@ -104,17 +162,18 @@ impl Dish {
             price_students: prices
                 .iter_mut()
                 .find(|(price_for, _)| price_for == "Studierende")
-                .map(|(_, price)| std::mem::take(price)),
+                .map(|(_, price)| price_to_bigdecimal(Some(price)))?,
             price_employees: prices
                 .iter_mut()
                 .find(|(price_for, _)| price_for == "Bedienstete")
-                .map(|(_, price)| std::mem::take(price)),
+                .map(|(_, price)| price_to_bigdecimal(Some(price)))?,
             price_guests: prices
                 .iter_mut()
                 .find(|(price_for, _)| price_for == "Gäste")
-                .map(|(_, price)| std::mem::take(price)),
+                .map(|(_, price)| price_to_bigdecimal(Some(price)))?,
             extras,
             dish_type,
+            nutrition_values,
         })
     }
 }
@@ -123,4 +182,17 @@ impl PartialOrd for Dish {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         self.name.partial_cmp(&other.name)
     }
+}
+
+fn price_to_bigdecimal(s: Option<&str>) -> BigDecimal {
+    s.and_then(|p| p.trim_end_matches(" €").replace(',', ".").parse().ok())
+        .unwrap_or_else(|| BigDecimal::from_bigint(BigInt::from(99999), 2))
+}
+
+fn grams_to_bigdecimal(s: &str) -> Option<BigDecimal> {
+    s.trim_end_matches("g")
+        .replace(',', ".")
+        .trim()
+        .parse()
+        .ok()
 }

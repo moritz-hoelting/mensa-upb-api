@@ -3,9 +3,8 @@ use std::env;
 use anyhow::Result;
 use chrono::NaiveDate;
 use futures::StreamExt as _;
-use num_bigint::BigInt;
 use shared::{Canteen, DishType};
-use sqlx::{postgres::PgPoolOptions, types::BigDecimal, PgPool, PgTransaction};
+use sqlx::{postgres::PgPoolOptions, PgPool, PgTransaction};
 
 use crate::{scrape_menu, Dish};
 
@@ -71,7 +70,7 @@ pub async fn add_menu_to_db(
         return Ok(());
     }
 
-    let mut query = sqlx::QueryBuilder::new("INSERT INTO meals (date,canteen,name,dish_type,image_src,price_students,price_employees,price_guests,vegan,vegetarian) ");
+    let mut query = sqlx::QueryBuilder::new("INSERT INTO meals (date,canteen,name,dish_type,image_src,price_students,price_employees,price_guests,vegan,vegetarian,kjoules,proteins,carbohydrates,fats) ");
 
     query
         .push_values(menu, |mut sep, item| {
@@ -82,11 +81,15 @@ pub async fn add_menu_to_db(
                 .push_bind(item.get_name().to_string())
                 .push_bind(item.get_type() as DishType)
                 .push_bind(item.get_image_src().map(str::to_string))
-                .push_bind(price_to_bigdecimal(item.get_price_students()))
-                .push_bind(price_to_bigdecimal(item.get_price_employees()))
-                .push_bind(price_to_bigdecimal(item.get_price_guests()))
+                .push_bind(item.get_price_students().to_owned())
+                .push_bind(item.get_price_employees().to_owned())
+                .push_bind(item.get_price_guests().to_owned())
                 .push_bind(vegan)
-                .push_bind(vegan || item.is_vegetarian());
+                .push_bind(vegan || item.is_vegetarian())
+                .push_bind(item.nutrition_values.kjoule)
+                .push_bind(item.nutrition_values.protein.to_owned())
+                .push_bind(item.nutrition_values.carbs.to_owned())
+                .push_bind(item.nutrition_values.fat.to_owned());
         })
         .build()
         .execute(&mut **db)
@@ -103,9 +106,4 @@ pub async fn add_menu_to_db(
     tracing::trace!("Insert to DB successfull");
 
     Ok(())
-}
-
-pub fn price_to_bigdecimal(s: Option<&str>) -> BigDecimal {
-    s.and_then(|p| p.trim_end_matches(" €").replace(',', ".").parse().ok())
-        .unwrap_or_else(|| BigDecimal::from_bigint(BigInt::from(99999), 2))
 }

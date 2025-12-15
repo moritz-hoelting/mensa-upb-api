@@ -47,7 +47,7 @@ async fn main() -> Result<()> {
         })
         .unwrap_or_default();
 
-    let date_canteen_combinations = (0..7)
+    let date_canteen_combinations = (0..1)
         .map(|d| (Utc::now() + Duration::days(d)).date_naive())
         .cartesian_product(Canteen::iter())
         .filter(|entry @ (_, canteen)| {
