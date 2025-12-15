@@ -1,10 +1,11 @@
+use chrono::NaiveDate;
+use mensa_upb_scraper::check_refresh;
+use serde::{Deserialize, Serialize};
+use shared::{Canteen, DishType};
+use sqlx::PgPool;
 use std::str::FromStr as _;
 
-use chrono::NaiveDate;
-use serde::{Deserialize, Serialize};
-use sqlx::PgPool;
-
-use crate::{Canteen, Dish, DishPrices};
+use crate::{Dish, DishPrices};
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct Menu {
@@ -15,18 +16,32 @@ pub struct Menu {
 }
 
 impl Menu {
-    pub async fn query(db: &PgPool, date: NaiveDate, canteens: &[Canteen]) -> sqlx::Result<Self> {
-        let canteens = canteens
+    pub async fn query(
+        db: &PgPool,
+        date: NaiveDate,
+        canteens: &[Canteen],
+        allow_refresh: bool,
+    ) -> sqlx::Result<Self> {
+        let canteens_str = canteens
             .iter()
             .map(|c| c.get_identifier().to_string())
             .collect::<Vec<_>>();
-        let result = sqlx::query!("SELECT name, array_agg(DISTINCT canteen ORDER BY canteen) AS canteens, dish_type, image_src, price_students, price_employees, price_guests, vegan, vegetarian 
-                FROM meals WHERE date = $1 AND canteen = ANY($2) 
+
+        let query_db = async || {
+            sqlx::query!(r#"SELECT name, array_agg(DISTINCT canteen ORDER BY canteen) AS "canteens!", dish_type AS "dish_type: DishType", image_src, price_students, price_employees, price_guests, vegan, vegetarian 
+                FROM meals WHERE date = $1 AND canteen = ANY($2) AND is_latest = TRUE
                 GROUP BY name, dish_type, image_src, price_students, price_employees, price_guests, vegan, vegetarian
-                ORDER BY name", 
-                date, &canteens)
+                ORDER BY name"#, 
+                date, &canteens_str)
             .fetch_all(db)
-            .await?;
+            .await
+        };
+
+        let mut result = query_db().await?;
+
+        if allow_refresh && check_refresh(db, date, canteens).await {
+            result = query_db().await?;
+        }
 
         let mut main_dishes = Vec::new();
         let mut side_dishes = Vec::new();
@@ -36,12 +51,11 @@ impl Menu {
             let dish = Dish {
                 name: row.name,
                 image_src: row.image_src,
-                canteens: row.canteens.map_or_else(Vec::new, |canteens| {
-                    canteens
-                        .iter()
-                        .map(|canteen| Canteen::from_str(canteen).expect("Invalid database entry"))
-                        .collect()
-                }),
+                canteens: row
+                    .canteens
+                    .iter()
+                    .map(|canteen| Canteen::from_str(canteen).expect("Invalid database entry"))
+                    .collect(),
                 vegan: row.vegan,
                 vegetarian: row.vegetarian,
                 price: DishPrices {
@@ -50,11 +64,11 @@ impl Menu {
                     guests: row.price_guests.with_prec(5).with_scale(2),
                 },
             };
-            if row.dish_type == "main" {
+            if row.dish_type == DishType::Main {
                 main_dishes.push(dish);
-            } else if row.dish_type == "side" {
+            } else if row.dish_type == DishType::Side {
                 side_dishes.push(dish);
-            } else if row.dish_type == "dessert" {
+            } else if row.dish_type == DishType::Dessert {
                 desserts.push(dish);
             }
         }

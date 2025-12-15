@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT name, array_agg(DISTINCT canteen ORDER BY canteen) AS canteens, dish_type, image_src, price_students, price_employees, price_guests, vegan, vegetarian \n                FROM meals WHERE date = $1 AND canteen = ANY($2) \n                GROUP BY name, dish_type, image_src, price_students, price_employees, price_guests, vegan, vegetarian\n                ORDER BY name",
+  "query": "SELECT name, array_agg(DISTINCT canteen ORDER BY canteen) AS \"canteens!\", dish_type AS \"dish_type: DishType\", image_src, price_students, price_employees, price_guests, vegan, vegetarian \n                FROM meals WHERE date = $1 AND canteen = ANY($2) AND is_latest = TRUE\n                GROUP BY name, dish_type, image_src, price_students, price_employees, price_guests, vegan, vegetarian\n                ORDER BY name",
   "describe": {
     "columns": [
       {
@@ -10,13 +10,24 @@
       },
       {
         "ordinal": 1,
-        "name": "canteens",
+        "name": "canteens!",
         "type_info": "TextArray"
       },
       {
         "ordinal": 2,
-        "name": "dish_type",
-        "type_info": "Text"
+        "name": "dish_type: DishType",
+        "type_info": {
+          "Custom": {
+            "name": "dish_type_enum",
+            "kind": {
+              "Enum": [
+                "main",
+                "side",
+                "dessert"
+              ]
+            }
+          }
+        }
       },
       {
         "ordinal": 3,
@@ -67,5 +78,5 @@
       false
     ]
   },
-  "hash": "b5a990f34095b255672e81562dc905e1957d1d33d823dc82ec92b552f5092028"
+  "hash": "ffbe520bbd10d79f189bc4cb202fc4367d1a1ea563d1b7845ab099ef6ec1e47a"
 }

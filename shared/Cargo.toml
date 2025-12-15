@@ -1,0 +1,13 @@
+[package]
+name = "shared"
+version = "0.1.0"
+edition = "2024"
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+readme.workspace = true
+
+[dependencies]
+serde = { workspace = true, features = ["derive"] }
+strum = { workspace = true, features = ["derive"] }
+sqlx = { workspace = true }

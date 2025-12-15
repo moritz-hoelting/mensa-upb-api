@@ -1,11 +1,11 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT DISTINCT date, canteen FROM MEALS WHERE date >= $1 AND date <= $2",
+  "query": "SELECT DISTINCT scraped_for, canteen FROM canteens_scraped WHERE scraped_for >= $1 AND scraped_for <= $2",
   "describe": {
     "columns": [
       {
         "ordinal": 0,
-        "name": "date",
+        "name": "scraped_for",
         "type_info": "Date"
       },
       {
@@ -25,5 +25,5 @@
       false
     ]
   },
-  "hash": "b94a6b49fb5e53e361da7a890dd5f62d467293454b01175939e32339ee90fd23"
+  "hash": "65858112433addbff921108a5b110ffead845478d359af83b70d98ff8d1945f2"
 }

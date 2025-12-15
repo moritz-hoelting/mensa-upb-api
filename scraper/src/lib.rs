@@ -1,12 +1,15 @@
 mod canteen;
 mod dish;
 mod menu;
+mod refresh;
 pub mod util;
 
 use std::{error::Error, fmt::Display};
 
-pub use canteen::Canteen;
 pub use dish::Dish;
+pub use menu::scrape_menu;
+pub use refresh::check_refresh;
+pub use util::scrape_canteens_at_days;
 
 #[derive(Debug, Clone)]
 struct CustomError(String);

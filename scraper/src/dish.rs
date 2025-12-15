@@ -1,7 +1,6 @@
-use std::fmt::Display;
-
 use itertools::Itertools;
 use scraper::ElementRef;
+use shared::DishType;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Dish {
@@ -123,23 +122,5 @@ impl Dish {
 impl PartialOrd for Dish {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         self.name.partial_cmp(&other.name)
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum DishType {
-    Main,
-    Side,
-    Dessert,
-}
-
-impl Display for DishType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let s = match self {
-            Self::Main => "main",
-            Self::Side => "side",
-            Self::Dessert => "dessert",
-        };
-        f.write_str(s)
     }
 }

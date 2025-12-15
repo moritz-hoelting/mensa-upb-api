@@ -5,13 +5,16 @@ use chrono::NaiveDate;
 use itertools::Itertools as _;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use shared::Canteen;
 use sqlx::PgPool;
 
-use crate::{Canteen, Menu};
+use crate::Menu;
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 struct MenuQuery {
     date: Option<NaiveDate>,
+    no_update: Option<bool>,
 }
 #[get("/menu/{canteen}")]
 async fn menu(
@@ -31,7 +34,7 @@ async fn menu(
             .date
             .unwrap_or_else(|| chrono::Local::now().date_naive());
 
-        let menu = Menu::query(&db, date, &canteens).await;
+        let menu = Menu::query(&db, date, &canteens, !query.no_update.unwrap_or_default()).await;
 
         if let Ok(menu) = menu {
             HttpResponse::Ok().json(menu)

@@ -10,18 +10,20 @@ edition = "2021"
 publish = false
 
 [dependencies]
-actix-cors = "0.7.0"
-actix-governor = { version = "0.8.0", features = ["log"] }
-actix-web = "4.9.0"
+actix-cors = "0.7.1"
+actix-governor = { version = "0.10.0", features = ["log"] }
+actix-web = "4.12.1"
 anyhow = { workspace = true }
-bigdecimal = { version = "0.4.6", features = ["serde"] }
+bigdecimal = { version = "0.4.9", features = ["serde"] }
 chrono = { workspace = true, features = ["serde"] }
 dotenvy = { workspace = true }
 itertools = { workspace = true }
-serde = { version = "1.0.215", features = ["derive"] }
-serde_json = "1.0.133"
+mensa-upb-scraper = { path = "../scraper" }
+serde = { workspace = true, features = ["derive"] }
+serde_json = "1.0.145"
+shared = { path = "../shared" }
 sqlx = { workspace = true, features = ["runtime-tokio-rustls", "postgres", "migrate", "chrono", "uuid", "bigdecimal"] }
 strum = { workspace = true, features = ["derive"] }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
-tracing = "0.1.40"
+tracing = "0.1.43"
 tracing-subscriber = { workspace = true, features = ["env-filter"] }

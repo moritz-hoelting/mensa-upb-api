@@ -1,9 +1,8 @@
 use actix_web::{get, web::ServiceConfig, HttpResponse, Responder};
 use itertools::Itertools as _;
 use serde_json::json;
+use shared::Canteen;
 use strum::IntoEnumIterator as _;
-
-use crate::Canteen;
 
 mod menu;
 

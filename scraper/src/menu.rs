@@ -1,7 +1,8 @@
 use anyhow::Result;
 use chrono::NaiveDate;
+use shared::{Canteen, DishType};
 
-use crate::{dish::DishType, Canteen, CustomError, Dish};
+use crate::{canteen::CanteenExt as _, CustomError, Dish};
 
 #[tracing::instrument]
 pub async fn scrape_menu(date: &NaiveDate, canteen: Canteen) -> Result<Vec<Dish>> {

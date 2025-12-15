@@ -1,7 +1,6 @@
 use bigdecimal::BigDecimal;
 use serde::{Deserialize, Serialize};
-
-use crate::Canteen;
+use shared::Canteen;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Dish {

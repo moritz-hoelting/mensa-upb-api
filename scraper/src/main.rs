@@ -3,8 +3,9 @@ use std::{collections::HashSet, env};
 use anyhow::Result;
 use chrono::{Duration, Utc};
 use itertools::Itertools as _;
-use mensa_upb_scraper::{util, Canteen};
-use strum::IntoEnumIterator;
+use mensa_upb_scraper::util;
+use shared::Canteen;
+use strum::IntoEnumIterator as _;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -22,7 +23,7 @@ async fn main() -> Result<()> {
     let end_date = (Utc::now() + Duration::days(6)).date_naive();
 
     let already_scraped = sqlx::query!(
-        "SELECT DISTINCT date, canteen FROM MEALS WHERE date >= $1 AND date <= $2",
+        "SELECT DISTINCT scraped_for, canteen FROM canteens_scraped WHERE scraped_for >= $1 AND scraped_for <= $2",
         start_date,
         end_date
     )
@@ -31,7 +32,7 @@ async fn main() -> Result<()> {
     .into_iter()
     .map(|r| {
         (
-            r.date,
+            r.scraped_for,
             r.canteen.parse::<Canteen>().expect("Invalid db entry"),
         )
     })
@@ -49,15 +50,12 @@ async fn main() -> Result<()> {
     let date_canteen_combinations = (0..7)
         .map(|d| (Utc::now() + Duration::days(d)).date_naive())
         .cartesian_product(Canteen::iter())
-        .filter(|entry| !filter_canteens.contains(&entry.1) && !already_scraped.contains(entry))
+        .filter(|entry @ (_, canteen)| {
+            !filter_canteens.contains(canteen) && !already_scraped.contains(entry)
+        })
         .collect::<Vec<_>>();
-    util::async_for_each(&date_canteen_combinations, |(date, canteen, menu)| {
-        let db = db.clone();
-        async move {
-            util::add_menu_to_db(&db, &date, canteen, menu).await;
-        }
-    })
-    .await;
+
+    util::scrape_canteens_at_days(&db, &date_canteen_combinations).await?;
 
     tracing::info!("Finished scraping menu");
 

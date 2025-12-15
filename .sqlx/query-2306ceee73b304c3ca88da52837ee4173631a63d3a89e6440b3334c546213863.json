@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT canteen, max(scraped_at) AS \"scraped_at!\" FROM canteens_scraped WHERE canteen = ANY($1) AND scraped_for = $2 GROUP BY canteen",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "canteen",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "scraped_at!",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "TextArray",
+        "Date"
+      ]
+    },
+    "nullable": [
+      false,
+      null
+    ]
+  },
+  "hash": "2306ceee73b304c3ca88da52837ee4173631a63d3a89e6440b3334c546213863"
+}
