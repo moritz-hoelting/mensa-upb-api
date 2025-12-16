@@ -59,10 +59,11 @@ impl Menu {
                 vegan: row.vegan,
                 vegetarian: row.vegetarian,
                 price: DishPrices {
-                    students: row.price_students.with_prec(5).with_scale(2),
-                    employees: row.price_employees.with_prec(5).with_scale(2),
-                    guests: row.price_guests.with_prec(5).with_scale(2),
-                },
+                    students: row.price_students,
+                    employees: row.price_employees,
+                    guests: row.price_guests,
+                }
+                .normalize(),
             };
             if row.dish_type == DishType::Main {
                 main_dishes.push(dish);

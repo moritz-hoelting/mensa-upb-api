@@ -1,32 +1,35 @@
-use std::str::FromStr as _;
-
-use actix_web::{get, web, HttpResponse, Responder};
+use actix_web::{
+    get,
+    web::{self, ServiceConfig},
+    HttpResponse, Responder,
+};
 use chrono::NaiveDate;
 use itertools::Itertools as _;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use shared::Canteen;
 use sqlx::PgPool;
 
-use crate::Menu;
+use crate::{util, Menu};
+
+pub fn configure(cfg: &mut ServiceConfig) {
+    cfg.service(menu);
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct MenuQuery {
     date: Option<NaiveDate>,
-    no_update: Option<bool>,
+    #[serde(default)]
+    no_update: bool,
 }
+
 #[get("/menu/{canteen}")]
 async fn menu(
     path: web::Path<String>,
     query: web::Query<MenuQuery>,
     db: web::Data<PgPool>,
 ) -> impl Responder {
-    let canteens = path
-        .into_inner()
-        .split(',')
-        .map(Canteen::from_str)
-        .collect_vec();
+    let canteens = util::parse_canteens_comma_separated(&path);
     if canteens.iter().all(Result::is_ok) {
         let canteens = canteens.into_iter().filter_map(Result::ok).collect_vec();
 
@@ -34,14 +37,16 @@ async fn menu(
             .date
             .unwrap_or_else(|| chrono::Local::now().date_naive());
 
-        let menu = Menu::query(&db, date, &canteens, !query.no_update.unwrap_or_default()).await;
+        let menu = Menu::query(&db, date, &canteens, !query.no_update).await;
 
-        if let Ok(menu) = menu {
-            HttpResponse::Ok().json(menu)
-        } else {
-            HttpResponse::InternalServerError().json(json!({
-                "error": "Failed to query database",
-            }))
+        match menu {
+            Ok(menu) => HttpResponse::Ok().json(menu),
+            Err(err) => {
+                tracing::error!("Failed to query database: {err:?}");
+                HttpResponse::InternalServerError().json(json!({
+                    "error": "Failed to query database",
+                }))
+            }
         }
     } else {
         HttpResponse::BadRequest().json(json!({

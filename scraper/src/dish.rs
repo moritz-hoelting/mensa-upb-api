@@ -29,7 +29,7 @@ pub struct Dish {
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct NutritionValues {
-    pub kjoule: Option<i64>,
+    pub kjoule: Option<i32>,
     pub protein: Option<BigDecimal>,
     pub carbs: Option<BigDecimal>,
     pub fat: Option<BigDecimal>,

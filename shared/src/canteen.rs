@@ -6,6 +6,7 @@ use strum::EnumIter;
 #[derive(
     Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, EnumIter, Hash, Serialize, Deserialize,
 )]
+#[serde(rename_all = "kebab-case")]
 pub enum Canteen {
     Forum,
     Academica,

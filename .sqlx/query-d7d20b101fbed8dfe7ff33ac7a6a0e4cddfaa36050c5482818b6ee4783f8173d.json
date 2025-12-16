@@ -1,0 +1,41 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT kjoules, proteins, carbohydrates, fats FROM meals m WHERE is_latest = TRUE AND LOWER(\"name\") = $1 AND date = $2 LIMIT 1;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "kjoules",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "proteins",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 2,
+        "name": "carbohydrates",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 3,
+        "name": "fats",
+        "type_info": "Numeric"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Date"
+      ]
+    },
+    "nullable": [
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "d7d20b101fbed8dfe7ff33ac7a6a0e4cddfaa36050c5482818b6ee4783f8173d"
+}

@@ -2,6 +2,7 @@ mod dish;
 pub mod endpoints;
 mod governor;
 mod menu;
+mod util;
 
 use std::sync::LazyLock;
 

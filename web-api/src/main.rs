@@ -2,7 +2,10 @@ use std::env;
 
 use actix_cors::Cors;
 use actix_governor::Governor;
-use actix_web::{web, App, HttpServer};
+use actix_web::{
+    middleware::{self, NormalizePath},
+    web, App, HttpServer,
+};
 use anyhow::Result;
 use itertools::Itertools;
 use mensa_upb_api::get_governor;
@@ -72,6 +75,7 @@ async fn main() -> Result<()> {
             .allow_any_header()
             .max_age(3600);
         App::new()
+            .wrap(NormalizePath::new(middleware::TrailingSlash::Trim))
             .wrap(Governor::new(&governor_conf))
             .wrap(cors)
             .app_data(web::Data::new(db.clone()))

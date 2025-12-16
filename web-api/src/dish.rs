@@ -1,6 +1,7 @@
 use bigdecimal::BigDecimal;
 use serde::{Deserialize, Serialize};
 use shared::Canteen;
+use sqlx::prelude::FromRow;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Dish {
@@ -17,6 +18,14 @@ pub struct DishPrices {
     pub students: BigDecimal,
     pub employees: BigDecimal,
     pub guests: BigDecimal,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, FromRow)]
+pub struct DishNutrients {
+    pub kjoules: Option<i32>,
+    pub carbohydrates: Option<BigDecimal>,
+    pub proteins: Option<BigDecimal>,
+    pub fats: Option<BigDecimal>,
 }
 
 impl Dish {
@@ -37,5 +46,26 @@ impl Dish {
 impl PartialOrd for Dish {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         self.name.partial_cmp(&other.name)
+    }
+}
+
+impl DishPrices {
+    pub fn normalize(self) -> Self {
+        Self {
+            students: self.students.with_prec(5).with_scale(2),
+            employees: self.employees.with_prec(5).with_scale(2),
+            guests: self.guests.with_prec(5).with_scale(2),
+        }
+    }
+}
+
+impl DishNutrients {
+    pub fn normalize(self) -> Self {
+        Self {
+            kjoules: self.kjoules,
+            carbohydrates: self.carbohydrates.map(|v| v.with_prec(6).with_scale(2)),
+            proteins: self.proteins.map(|v| v.with_prec(6).with_scale(2)),
+            fats: self.fats.map(|v| v.with_prec(6).with_scale(2)),
+        }
     }
 }

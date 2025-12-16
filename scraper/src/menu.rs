@@ -41,8 +41,6 @@ pub async fn scrape_menu(date: &NaiveDate, canteen: Canteen) -> Result<Vec<Dish>
     res.extend(side_dishes);
     res.extend(desserts);
 
-    dbg!(&res);
-
     tracing::debug!("Finished scraping");
 
     Ok(res)
