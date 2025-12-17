@@ -1,6 +1,7 @@
 
 FROM rust:latest AS chef
-RUN cargo install cargo-chef
+RUN curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
+RUN cargo binstall cargo-chef -y
 WORKDIR /app
 
 FROM chef AS planner

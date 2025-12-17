@@ -19,7 +19,8 @@ async fn main() -> Result<()> {
         .with_default_directive(LevelFilter::WARN.into())
         .from_env()
         .expect("Invalid filter")
-        .add_directive("mensa_upb_api=debug".parse().unwrap());
+        .add_directive("mensa_upb_api=debug".parse().unwrap())
+        .add_directive("mensa_upb_scraper=debug".parse().unwrap());
     tracing_subscriber::fmt().with_env_filter(env_filter).init();
 
     match dotenvy::dotenv() {

@@ -1,9 +1,9 @@
-use std::{collections::HashSet, env};
+use std::collections::HashSet;
 
 use anyhow::Result;
 use chrono::{Duration, Utc};
 use itertools::Itertools as _;
-use mensa_upb_scraper::util;
+use mensa_upb_scraper::{util, FILTER_CANTEENS};
 use shared::Canteen;
 use strum::IntoEnumIterator as _;
 
@@ -38,20 +38,11 @@ async fn main() -> Result<()> {
     })
     .collect::<HashSet<_>>();
 
-    let filter_canteens = env::var("FILTER_CANTEENS")
-        .ok()
-        .map(|s| {
-            s.split(',')
-                .filter_map(|el| el.parse::<Canteen>().ok())
-                .collect::<HashSet<_>>()
-        })
-        .unwrap_or_default();
-
-    let date_canteen_combinations = (0..1)
+    let date_canteen_combinations = (0..7)
         .map(|d| (Utc::now() + Duration::days(d)).date_naive())
         .cartesian_product(Canteen::iter())
         .filter(|entry @ (_, canteen)| {
-            !filter_canteens.contains(canteen) && !already_scraped.contains(entry)
+            !FILTER_CANTEENS.contains(canteen) && !already_scraped.contains(entry)
         })
         .collect::<Vec<_>>();
 
