@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT date, canteen, price_students, price_employees, price_guests FROM meals WHERE canteen = ANY($1) AND LOWER(\"name\") = $2 AND is_latest = TRUE",
+  "query": "SELECT date, canteen, price_students, price_employees, price_guests FROM meals WHERE canteen = ANY($1) AND LOWER(\"name\") = $2 AND is_latest = TRUE ORDER BY date DESC LIMIT $3;",
   "describe": {
     "columns": [
       {
@@ -32,7 +32,8 @@
     "parameters": {
       "Left": [
         "TextArray",
-        "Text"
+        "Text",
+        "Int8"
       ]
     },
     "nullable": [
@@ -43,5 +44,5 @@
       false
     ]
   },
-  "hash": "cdf76d5e7d5d61d3cc61411d526816996885ccbd07237847c57f62cc3b6357db"
+  "hash": "da9537a50cbe6a27836af42e7e333581826a3f87131f001f2db3ef39b88b746e"
 }

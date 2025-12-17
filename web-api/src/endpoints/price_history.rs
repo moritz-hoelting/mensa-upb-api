@@ -22,6 +22,7 @@ pub fn configure(cfg: &mut ServiceConfig) {
 #[serde(rename_all = "camelCase")]
 struct PriceHistoryQuery {
     canteens: Option<String>,
+    limit: Option<u32>,
 }
 
 #[derive(Debug, Clone, Deserialize, FromRow)]
@@ -45,6 +46,7 @@ async fn price_history(
         .as_deref()
         .map(util::parse_canteens_comma_separated);
     let dish_name = path.into_inner();
+    let limit = query.limit.unwrap_or(1000) as i64;
 
     if let Some(canteens) = canteens {
         if canteens.iter().all(Result::is_ok) {
@@ -54,9 +56,10 @@ async fn price_history(
                 let canteen = canteens.into_iter().next().expect("length is 1");
 
                 let res = sqlx::query!(
-                    r#"SELECT date, price_students, price_employees, price_guests FROM meals WHERE canteen = $1 AND LOWER("name") = $2 AND is_latest = TRUE"#,
+                    r#"SELECT date, price_students, price_employees, price_guests FROM meals WHERE canteen = $1 AND LOWER("name") = $2 AND is_latest = TRUE ORDER BY date DESC LIMIT $3;"#,
                     canteen.get_identifier(),
                     dish_name.to_lowercase(),
+                    limit,
                 )
                 .fetch_all(db)
                 .await;
@@ -89,9 +92,10 @@ async fn price_history(
                 }
             } else {
                 let res = sqlx::query_as!(PriceHistoryRow,
-                    r#"SELECT date, canteen, price_students, price_employees, price_guests FROM meals WHERE canteen = ANY($1) AND LOWER("name") = $2 AND is_latest = TRUE"#,
+                    r#"SELECT date, canteen, price_students, price_employees, price_guests FROM meals WHERE canteen = ANY($1) AND LOWER("name") = $2 AND is_latest = TRUE ORDER BY date DESC LIMIT $3;"#,
                     &canteens.iter().map(|c| c.get_identifier().to_string()).collect_vec(),
                     dish_name.to_lowercase(),
+                    limit
                 )
                 .fetch_all(db)
                 .await;
@@ -118,8 +122,9 @@ async fn price_history(
         }
     } else {
         let res = sqlx::query_as!(PriceHistoryRow,
-            r#"SELECT date, canteen, price_students, price_employees, price_guests FROM meals WHERE LOWER("name") = $1 AND is_latest = TRUE"#,
+            r#"SELECT date, canteen, price_students, price_employees, price_guests FROM meals WHERE LOWER("name") = $1 AND is_latest = TRUE ORDER BY date DESC LIMIT $2;"#,
             dish_name.to_lowercase(),
+            limit as i64,
         )
         .fetch_all(db)
         .await;
@@ -144,6 +149,7 @@ fn structure_multiple_canteens(
     v: Vec<PriceHistoryRow>,
 ) -> BTreeMap<String, BTreeMap<NaiveDate, DishPrices>> {
     v.into_iter()
+        .sorted_by_cached_key(|r| r.canteen.clone())
         .chunk_by(|r| r.canteen.clone())
         .into_iter()
         .map(|(d, g)| {
