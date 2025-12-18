@@ -1,0 +1,20 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT MIN(date) AS \"date!\" FROM meals WHERE is_latest = TRUE;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "date!",
+        "type_info": "Date"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "66fcef790324f9eedc03ad052acc67111c50d82f56471df1c9adba498be0d543"
+}

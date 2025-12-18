@@ -5,11 +5,13 @@ use shared::Canteen;
 use strum::IntoEnumIterator as _;
 
 mod menu;
+mod metadata;
 mod nutrition;
 mod price_history;
 
 pub fn configure(cfg: &mut ServiceConfig) {
     cfg.service(index)
+        .configure(metadata::configure)
         .configure(menu::configure)
         .configure(nutrition::configure)
         .configure(price_history::configure);
