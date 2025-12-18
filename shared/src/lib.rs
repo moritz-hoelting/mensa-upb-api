@@ -3,7 +3,7 @@ use std::fmt::Display;
 mod canteen;
 pub use canteen::Canteen;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, sqlx::Type)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, sqlx::Type)]
 #[sqlx(type_name = "dish_type_enum")]
 #[sqlx(rename_all = "lowercase")]
 pub enum DishType {

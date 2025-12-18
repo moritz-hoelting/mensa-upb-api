@@ -1,10 +1,11 @@
 use std::sync::LazyLock;
 
-use itertools::Itertools;
 use num_bigint::BigInt;
 use scraper::{ElementRef, Selector};
 use shared::DishType;
 use sqlx::types::BigDecimal;
+
+use crate::util::normalize_price_bigdecimal;
 
 static IMG_SELECTOR: LazyLock<Selector> =
     LazyLock::new(|| Selector::parse(".img img").expect("Failed to parse selector"));
@@ -15,19 +16,20 @@ static HTML_EXTRAS_SELECTOR: LazyLock<Selector> =
 static HTML_NUTRITIONS_SELECTOR: LazyLock<Selector> =
     LazyLock::new(|| Selector::parse(".nutritions > p").expect("Failed to parse selector"));
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Dish {
-    name: String,
-    image_src: Option<String>,
-    price_students: BigDecimal,
-    price_employees: BigDecimal,
-    price_guests: BigDecimal,
-    extras: Vec<String>,
-    dish_type: DishType,
+    pub name: String,
+    pub image_src: Option<String>,
+    pub price_students: BigDecimal,
+    pub price_employees: BigDecimal,
+    pub price_guests: BigDecimal,
+    pub vegetarian: bool,
+    pub vegan: bool,
+    pub dish_type: DishType,
     pub nutrition_values: NutritionValues,
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
 pub struct NutritionValues {
     pub kjoule: Option<i32>,
     pub protein: Option<BigDecimal>,
@@ -52,13 +54,10 @@ impl Dish {
         self.image_src.as_deref()
     }
     pub fn is_vegan(&self) -> bool {
-        self.extras.contains(&"vegan".to_string())
+        self.vegan
     }
     pub fn is_vegetarian(&self) -> bool {
-        self.extras.contains(&"vegetarisch".to_string())
-    }
-    pub fn get_extras(&self) -> &[String] {
-        &self.extras
+        self.vegetarian
     }
     pub fn get_type(&self) -> DishType {
         self.dish_type
@@ -69,8 +68,9 @@ impl Dish {
             && self.price_employees == other.price_employees
             && self.price_guests == other.price_guests
             && self.price_students == other.price_students
-            && self.extras.iter().sorted().collect_vec()
-                == self.extras.iter().sorted().collect_vec()
+            && self.vegan == other.vegan
+            && self.vegetarian == other.vegetarian
+            && self.dish_type == other.dish_type
     }
 
     pub fn from_element(
@@ -156,6 +156,8 @@ impl Dish {
             NutritionValues::default()
         };
 
+        let vegan = extras.contains(&"vegan".to_string());
+
         Some(Self {
             name,
             image_src: img_src,
@@ -171,10 +173,22 @@ impl Dish {
                 .iter_mut()
                 .find(|(price_for, _)| price_for == "Gäste")
                 .map(|(_, price)| price_to_bigdecimal(Some(price)))?,
-            extras,
+            vegetarian: vegan || extras.contains(&"vegetarisch".to_string()),
+            vegan,
             dish_type,
-            nutrition_values,
+            nutrition_values: nutrition_values.normalize(),
         })
+    }
+}
+
+impl NutritionValues {
+    pub fn normalize(self) -> Self {
+        Self {
+            kjoule: self.kjoule,
+            protein: self.protein.map(|p| p.with_prec(6).with_scale(2)),
+            carbs: self.carbs.map(|c| c.with_prec(6).with_scale(2)),
+            fat: self.fat.map(|f| f.with_prec(6).with_scale(2)),
+        }
     }
 }
 
@@ -185,8 +199,14 @@ impl PartialOrd for Dish {
 }
 
 fn price_to_bigdecimal(s: Option<&str>) -> BigDecimal {
-    s.and_then(|p| p.trim_end_matches(" €").replace(',', ".").parse().ok())
-        .unwrap_or_else(|| BigDecimal::from_bigint(BigInt::from(99999), 2))
+    s.and_then(|p| {
+        p.trim_end_matches(" €")
+            .replace(',', ".")
+            .parse::<BigDecimal>()
+            .ok()
+    })
+    .map(normalize_price_bigdecimal)
+    .unwrap_or_else(|| BigDecimal::from_bigint(BigInt::from(99999), 2))
 }
 
 fn grams_to_bigdecimal(s: &str) -> Option<BigDecimal> {

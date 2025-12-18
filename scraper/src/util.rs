@@ -2,9 +2,9 @@ use std::env;
 
 use anyhow::Result;
 use chrono::NaiveDate;
-use futures::StreamExt as _;
+use futures::{Stream, StreamExt as _};
 use shared::{Canteen, DishType};
-use sqlx::{postgres::PgPoolOptions, PgPool, PgTransaction};
+use sqlx::{postgres::PgPoolOptions, types::BigDecimal, PgPool, PgTransaction};
 
 use crate::{scrape_menu, Dish};
 
@@ -13,7 +13,7 @@ pub fn get_db() -> Result<PgPool> {
         .connect_lazy(&env::var("DATABASE_URL").expect("missing DATABASE_URL env variable"))?)
 }
 
-pub async fn scrape_canteens_at_days(
+pub async fn scrape_canteens_at_days_and_insert(
     db: &PgPool,
     date_canteen_combinations: &[(NaiveDate, Canteen)],
 ) -> Result<()> {
@@ -40,24 +40,43 @@ pub async fn scrape_canteens_at_days(
         transaction.commit().await
     });
 
-    futures::stream::iter(date_canteen_combinations)
-        .then(|(date, canteen)| async move { (*date, *canteen, scrape_menu(date, *canteen).await) })
-        .filter_map(
-            |(date, canteen, menu)| async move { menu.ok().map(|menu| (date, canteen, menu)) },
-        )
-        .for_each(|(date, canteen, menu)| {
+    let errs = scrape_canteens_at_days(date_canteen_combinations)
+        .then(|res| {
             let tx = tx.clone();
             async move {
-                tx.send((date, canteen, menu)).await.ok();
+                match res {
+                    Ok((date, canteen, menu)) => {
+                        tx.send((date, canteen, menu)).await.ok();
+                        Ok(())
+                    }
+                    Err(err) => {
+                        tracing::error!("Error scraping menu: {err}");
+                        Err(err)
+                    }
+                }
             }
         })
+        .collect::<Vec<_>>()
         .await;
 
     drop(tx);
-
     insert_handle.await??;
 
+    if let Some(err) = errs.into_iter().find_map(Result::err) {
+        return Err(err);
+    }
+
     Ok(())
+}
+
+pub fn scrape_canteens_at_days<'a>(
+    date_canteen_combinations: &'a [(NaiveDate, Canteen)],
+) -> impl Stream<Item = Result<(NaiveDate, Canteen, Vec<Dish>)>> + 'a {
+    futures::stream::iter(date_canteen_combinations).then(|(date, canteen)| async move {
+        scrape_menu(date, *canteen)
+            .await
+            .map(|menu| (*date, *canteen, menu))
+    })
 }
 
 pub async fn add_menu_to_db(
@@ -106,4 +125,8 @@ pub async fn add_menu_to_db(
     tracing::trace!("Insert to DB successfull");
 
     Ok(())
+}
+
+pub fn normalize_price_bigdecimal(price: BigDecimal) -> BigDecimal {
+    price.with_prec(6).with_scale(2)
 }

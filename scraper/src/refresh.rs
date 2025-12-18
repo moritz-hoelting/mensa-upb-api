@@ -5,11 +5,17 @@ use std::{
 };
 
 use chrono::{NaiveDate, Utc};
+use futures::{StreamExt, TryStreamExt as _};
 use itertools::Itertools;
-use shared::Canteen;
+use shared::{Canteen, DishType};
+use sqlx::QueryBuilder;
 use strum::IntoEnumIterator as _;
 
-use crate::util;
+use crate::{
+    dish::NutritionValues,
+    util::{self, add_menu_to_db, normalize_price_bigdecimal},
+    Dish,
+};
 
 static NON_FILTERED_CANTEENS: LazyLock<Vec<Canteen>> = LazyLock::new(|| {
     let all_canteens = Canteen::iter().collect::<HashSet<_>>();
@@ -61,20 +67,70 @@ pub async fn check_refresh(db: &sqlx::PgPool, date: NaiveDate, canteens: &[Cante
             canteens_needing_refresh
         );
 
-        if let Err(err) = util::scrape_canteens_at_days(
-            db,
+        let canteen_date_pairs = canteens_needing_refresh
+            .iter()
+            .map(|c| (date, *c))
+            .collect::<Vec<_>>();
+
+        let scraped_dishes = util::scrape_canteens_at_days(&canteen_date_pairs)
+            .filter_map(|res| async move { res.ok() })
+            .flat_map(|(_, canteen, menu)| {
+                futures::stream::iter(menu).map(move |dish| (canteen, dish))
+            })
+            .collect::<HashSet<_>>();
+
+        let db_data = sqlx::query!(
+            r#"SELECT canteen, name, image_src, price_students, price_employees, price_guests, vegetarian, vegan, dish_type AS "dish_type: DishType", kjoules, proteins, carbohydrates, fats FROM meals WHERE date = $1 AND is_latest = TRUE AND canteen = ANY($2)"#,
+            date,
             &canteens_needing_refresh
                 .iter()
-                .map(|c| (date, *c))
+                .map(|c| c.get_identifier().to_string())
                 .collect::<Vec<_>>(),
+        ).map(|r| {
+            (
+                Canteen::from_str(&r.canteen).expect("malformed db entry") ,
+                Dish {
+                    name: r.name,
+                    image_src: r.image_src,
+                    price_students: normalize_price_bigdecimal(r.price_students),
+                    price_employees: normalize_price_bigdecimal(r.price_employees),
+                    price_guests: normalize_price_bigdecimal(r.price_guests),
+                    vegetarian: r.vegetarian,
+                    vegan: r.vegan,
+                    dish_type: r.dish_type,
+                    nutrition_values: NutritionValues {
+                        kjoule: r.kjoules,
+                        protein: r.proteins,
+                        carbs: r.carbohydrates,
+                        fat: r.fats,
+                    }.normalize(),
+                }
         )
-        .await
-        {
-            tracing::error!("Error during refresh scrape: {}", err);
-            return false;
-        }
+        }).fetch(db).try_collect::<HashSet<_>>();
 
-        true
+        let (scraped_dishes, db_data) = futures::join!(scraped_dishes, db_data);
+
+        match db_data {
+            Ok(db_dishes) => {
+                let stale_dishes = db_dishes
+                    .difference(&scraped_dishes)
+                    .collect::<HashSet<_>>();
+                let new_dishes = scraped_dishes
+                    .difference(&db_dishes)
+                    .collect::<HashSet<_>>();
+
+                if let Err(err) = update_stale_dishes(db, date, &stale_dishes, &new_dishes).await {
+                    tracing::error!("Error updating stale dishes in db: {}", err);
+                    false
+                } else {
+                    true
+                }
+            }
+            Err(err) => {
+                tracing::error!("Error fetching existing dishes from db: {}", err);
+                false
+            }
+        }
     }
 }
 
@@ -88,4 +144,45 @@ fn needs_refresh(last_refreshed: chrono::DateTime<Utc>, date_entry: chrono::Naiv
     } else {
         now.signed_duration_since(last_refreshed) >= chrono::Duration::days(2)
     }
+}
+
+async fn update_stale_dishes(
+    db: &sqlx::PgPool,
+    date: NaiveDate,
+    stale_dishes: &HashSet<&(Canteen, Dish)>,
+    new_dishes: &HashSet<&(Canteen, Dish)>,
+) -> Result<(), sqlx::Error> {
+    let mut tx = db.begin().await?;
+
+    QueryBuilder::new("UPDATE meals SET is_latest = FALSE WHERE date = ")
+        .push_bind(date)
+        .push(r#" AND ("name", canteen) IN "#)
+        .push_tuples(stale_dishes, |mut sep, (canteen, dish)| {
+            sep.push_bind(&dish.name)
+                .push_bind(canteen.get_identifier());
+        })
+        .push(";")
+        .build()
+        .execute(&mut *tx)
+        .await?;
+
+    let chunks = new_dishes
+        .iter()
+        .sorted_by_key(|(c, _)| c)
+        .chunk_by(|(c, _)| c);
+
+    let new_dishes_iter = chunks.into_iter().map(|(canteen, g)| {
+        (
+            *canteen,
+            g.map(|(_, dish)| dish).cloned().collect::<Vec<_>>(),
+        )
+    });
+
+    for (canteen, menu) in new_dishes_iter {
+        add_menu_to_db(&mut tx, &date, canteen, menu).await?;
+    }
+
+    tx.commit().await?;
+
+    Ok(())
 }

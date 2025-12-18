@@ -1,0 +1,106 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT canteen, name, image_src, price_students, price_employees, price_guests, vegetarian, vegan, dish_type AS \"dish_type: DishType\", kjoules, proteins, carbohydrates, fats FROM meals WHERE date = $1 AND is_latest = TRUE AND canteen = ANY($2)",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "canteen",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "image_src",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "price_students",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 4,
+        "name": "price_employees",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 5,
+        "name": "price_guests",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 6,
+        "name": "vegetarian",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 7,
+        "name": "vegan",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 8,
+        "name": "dish_type: DishType",
+        "type_info": {
+          "Custom": {
+            "name": "dish_type_enum",
+            "kind": {
+              "Enum": [
+                "main",
+                "side",
+                "dessert"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "kjoules",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 10,
+        "name": "proteins",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 11,
+        "name": "carbohydrates",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 12,
+        "name": "fats",
+        "type_info": "Numeric"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Date",
+        "TextArray"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "87707bff13b4ce6ff47d2f79ee5d40b677042a20c217acc347ecdd04ebf3e6e0"
+}

@@ -46,7 +46,7 @@ async fn main() -> Result<()> {
         })
         .collect::<Vec<_>>();
 
-    util::scrape_canteens_at_days(&db, &date_canteen_combinations).await?;
+    util::scrape_canteens_at_days_and_insert(&db, &date_canteen_combinations).await?;
 
     tracing::info!("Finished scraping menu");
 
