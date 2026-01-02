@@ -119,7 +119,9 @@ pub async fn check_refresh(db: &sqlx::PgPool, date: NaiveDate, canteens: &[Cante
                     .difference(&db_dishes)
                     .collect::<HashSet<_>>();
 
-                if let Err(err) = update_stale_dishes(db, date, &stale_dishes, &new_dishes).await {
+                if let Err(err) =
+                    update_stale_dishes(db, date, &stale_dishes, &new_dishes, canteens).await
+                {
                     tracing::error!("Error updating stale dishes in db: {}", err);
                     false
                 } else {
@@ -151,32 +153,43 @@ async fn update_stale_dishes(
     date: NaiveDate,
     stale_dishes: &HashSet<&(Canteen, Dish)>,
     new_dishes: &HashSet<&(Canteen, Dish)>,
+    canteens: &[Canteen],
 ) -> Result<(), sqlx::Error> {
     let mut tx = db.begin().await?;
 
-    QueryBuilder::new("UPDATE meals SET is_latest = FALSE WHERE date = ")
-        .push_bind(date)
-        .push(r#" AND ("name", canteen) IN "#)
-        .push_tuples(stale_dishes, |mut sep, (canteen, dish)| {
-            sep.push_bind(&dish.name)
-                .push_bind(canteen.get_identifier());
-        })
-        .push(";")
-        .build()
-        .execute(&mut *tx)
-        .await?;
+    if !stale_dishes.is_empty() {
+        QueryBuilder::new("UPDATE meals SET is_latest = FALSE WHERE date = ")
+            .push_bind(date)
+            .push(r#" AND ("name", canteen) IN "#)
+            .push_tuples(stale_dishes, |mut sep, (canteen, dish)| {
+                sep.push_bind(&dish.name)
+                    .push_bind(canteen.get_identifier());
+            })
+            .push(";")
+            .build()
+            .execute(&mut *tx)
+            .await?;
+    }
 
     let chunks = new_dishes
         .iter()
         .sorted_by_key(|(c, _)| c)
         .chunk_by(|(c, _)| c);
 
-    let new_dishes_iter = chunks.into_iter().map(|(canteen, g)| {
-        (
-            *canteen,
-            g.map(|(_, dish)| dish).cloned().collect::<Vec<_>>(),
-        )
-    });
+    let new_dishes_iter = chunks
+        .into_iter()
+        .map(|(canteen, g)| {
+            (
+                *canteen,
+                g.map(|(_, dish)| dish).cloned().collect::<Vec<_>>(),
+            )
+        })
+        .chain(
+            canteens
+                .iter()
+                .map(|canteen| (*canteen, Vec::new()))
+                .unique_by(|(c, _)| *c),
+        );
 
     for (canteen, menu) in new_dishes_iter {
         add_menu_to_db(&mut tx, &date, canteen, menu).await?;
