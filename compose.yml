@@ -2,7 +2,8 @@ services:
     api:
         build: 
           context: .
-          dockerfile: ./web-api/Dockerfile
+          dockerfile: ./Dockerfile
+          target: api-runtime
         image: mensa-upb-api:latest
         ports:
             - 8080:8080
@@ -16,7 +17,8 @@ services:
     scraper:
         build: 
           context: .
-          dockerfile: ./scraper/Dockerfile
+          dockerfile: ./Dockerfile
+          target: scraper-runtime
         image: mensa-upb-scraper:latest
         environment:
             - DATABASE_URL=postgres://pguser:pgpass@postgres-mensa-upb/postgres
