@@ -1,11 +1,19 @@
-use std::collections::HashSet;
+use std::sync::LazyLock;
 
 use anyhow::Result;
 use chrono::{Duration, Utc};
-use itertools::Itertools as _;
-use mensa_upb_scraper::{util, FILTER_CANTEENS};
+use futures::{future, StreamExt};
+use mensa_upb_scraper::{check_refresh, util, FILTER_CANTEENS};
 use shared::Canteen;
 use strum::IntoEnumIterator as _;
+use tracing::level_filters::LevelFilter;
+use tracing_subscriber::EnvFilter;
+
+static CANTEENS: LazyLock<Vec<Canteen>> = LazyLock::new(|| {
+    Canteen::iter()
+        .filter(|c| !FILTER_CANTEENS.contains(c))
+        .collect::<Vec<_>>()
+});
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -13,40 +21,31 @@ async fn main() -> Result<()> {
 
     let db = util::get_db()?;
 
-    tracing_subscriber::fmt::init();
+    let env_filter = EnvFilter::builder()
+        .with_default_directive(LevelFilter::WARN.into())
+        .from_env()
+        .expect("Invalid filter")
+        .add_directive("mensa_upb_scraper=debug".parse().unwrap());
+    tracing_subscriber::fmt().with_env_filter(env_filter).init();
 
     sqlx::migrate!("../migrations").run(&db).await?;
 
     tracing::info!("Starting up...");
 
-    let start_date = Utc::now().date_naive();
-    let end_date = (Utc::now() + Duration::days(6)).date_naive();
-
-    let already_scraped = sqlx::query!(
-        "SELECT DISTINCT scraped_for, canteen FROM canteens_scraped WHERE scraped_for >= $1 AND scraped_for <= $2",
-        start_date,
-        end_date
-    )
-    .fetch_all(&db)
-    .await?
-    .into_iter()
-    .map(|r| {
-        (
-            r.scraped_for,
-            r.canteen.parse::<Canteen>().expect("Invalid db entry"),
-        )
-    })
-    .collect::<HashSet<_>>();
-
-    let date_canteen_combinations = (0..7)
+    let handles = (0..7)
         .map(|d| (Utc::now() + Duration::days(d)).date_naive())
-        .cartesian_product(Canteen::iter())
-        .filter(|entry @ (_, canteen)| {
-            !FILTER_CANTEENS.contains(canteen) && !already_scraped.contains(entry)
-        })
-        .collect::<Vec<_>>();
+        .map(|date| {
+            let db = db.clone();
+            tokio::spawn(async move { check_refresh(&db, date, &CANTEENS).await })
+        });
 
-    util::scrape_canteens_at_days_and_insert(&db, &date_canteen_combinations).await?;
+    future::join_all(handles).await;
+
+    futures::stream::iter((0..7).map(|d| (Utc::now() + Duration::days(d)).date_naive()))
+        .for_each_concurrent(None, async |date| {
+            check_refresh(&db, date, &CANTEENS).await;
+        })
+        .await;
 
     tracing::info!("Finished scraping menu");
 

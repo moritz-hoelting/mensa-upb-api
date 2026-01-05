@@ -7,7 +7,7 @@ use std::str::FromStr as _;
 
 use crate::{Dish, DishPrices};
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, utoipa::ToSchema)]
 pub struct Menu {
     date: NaiveDate,
     main_dishes: Vec<Dish>,
@@ -27,21 +27,17 @@ impl Menu {
             .map(|c| c.get_identifier().to_string())
             .collect::<Vec<_>>();
 
-        let query_db = async || {
-            sqlx::query!(r#"SELECT name, array_agg(DISTINCT canteen ORDER BY canteen) AS "canteens!", dish_type AS "dish_type: DishType", image_src, price_students, price_employees, price_guests, vegan, vegetarian 
+        if allow_refresh {
+            check_refresh(db, date, canteens).await;
+        };
+
+        let result = sqlx::query!(r#"SELECT name, array_agg(DISTINCT canteen ORDER BY canteen) AS "canteens!", dish_type AS "dish_type: DishType", image_src, price_students, price_employees, price_guests, vegan, vegetarian 
                 FROM meals WHERE date = $1 AND canteen = ANY($2) AND is_latest = TRUE
                 GROUP BY name, dish_type, image_src, price_students, price_employees, price_guests, vegan, vegetarian
                 ORDER BY name"#, 
                 date, &canteens_str)
             .fetch_all(db)
-            .await
-        };
-
-        let mut result = query_db().await?;
-
-        if allow_refresh && check_refresh(db, date, canteens).await {
-            result = query_db().await?;
-        }
+            .await?;
 
         let mut main_dishes = Vec::new();
         let mut side_dishes = Vec::new();

@@ -12,9 +12,9 @@ use sqlx::QueryBuilder;
 use strum::IntoEnumIterator as _;
 
 use crate::{
+    Dish,
     dish::NutritionValues,
     util::{self, add_menu_to_db, normalize_price_bigdecimal},
-    Dish,
 };
 
 static NON_FILTERED_CANTEENS: LazyLock<Vec<Canteen>> = LazyLock::new(|| {
@@ -28,7 +28,7 @@ static NON_FILTERED_CANTEENS: LazyLock<Vec<Canteen>> = LazyLock::new(|| {
 
 #[tracing::instrument(skip(db))]
 pub async fn check_refresh(db: &sqlx::PgPool, date: NaiveDate, canteens: &[Canteen]) -> bool {
-    if date > Utc::now().date_naive() + chrono::Duration::days(7) {
+    if date > Utc::now().date_naive() + chrono::Duration::days(31) {
         tracing::debug!("Not refreshing menu for date {date} as it is too far in the future");
         return false;
     }
@@ -148,13 +148,14 @@ fn needs_refresh(last_refreshed: chrono::DateTime<Utc>, date_entry: chrono::Naiv
     }
 }
 
+#[tracing::instrument(skip(db, date, stale_dishes, new_dishes), fields(date = %date, stale_dish_count = %stale_dishes.len(), new_dish_count = %new_dishes.len()))]
 async fn update_stale_dishes(
     db: &sqlx::PgPool,
     date: NaiveDate,
     stale_dishes: &HashSet<&(Canteen, Dish)>,
     new_dishes: &HashSet<&(Canteen, Dish)>,
     canteens: &[Canteen],
-) -> Result<(), sqlx::Error> {
+) -> anyhow::Result<()> {
     let mut tx = db.begin().await?;
 
     if !stale_dishes.is_empty() {
@@ -169,6 +170,10 @@ async fn update_stale_dishes(
             .build()
             .execute(&mut *tx)
             .await?;
+
+        if new_dishes.is_empty() {
+            tracing::debug!("No new dishes to add after marking stale dishes");
+        }
     }
 
     let chunks = new_dishes
@@ -184,12 +189,9 @@ async fn update_stale_dishes(
                 g.map(|(_, dish)| dish).cloned().collect::<Vec<_>>(),
             )
         })
-        .chain(
-            canteens
-                .iter()
-                .map(|canteen| (*canteen, Vec::new()))
-                .unique_by(|(c, _)| *c),
-        );
+        .chain(canteens.iter().map(|canteen| (*canteen, Vec::new())))
+        .unique_by(|(c, _)| *c)
+        .collect::<Vec<_>>();
 
     for (canteen, menu) in new_dishes_iter {
         add_menu_to_db(&mut tx, &date, canteen, menu).await?;

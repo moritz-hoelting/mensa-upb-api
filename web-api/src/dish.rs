@@ -1,9 +1,9 @@
-use bigdecimal::BigDecimal;
+use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use shared::Canteen;
 use sqlx::prelude::FromRow;
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct Dish {
     pub name: String,
     pub image_src: Option<String>,
@@ -13,19 +13,27 @@ pub struct Dish {
     pub canteens: Vec<Canteen>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct DishPrices {
-    pub students: BigDecimal,
-    pub employees: BigDecimal,
-    pub guests: BigDecimal,
+    pub students: Decimal,
+    pub employees: Decimal,
+    pub guests: Decimal,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, FromRow)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, FromRow, utoipa::ToSchema)]
+#[schema(examples(
+    json!({
+        "kjoules": 1500,
+        "carbohydrates": "45.5",
+        "proteins": "30.0",
+        "fats": "10.0"
+    })
+))]
 pub struct DishNutrients {
     pub kjoules: Option<i32>,
-    pub carbohydrates: Option<BigDecimal>,
-    pub proteins: Option<BigDecimal>,
-    pub fats: Option<BigDecimal>,
+    pub carbohydrates: Option<Decimal>,
+    pub proteins: Option<Decimal>,
+    pub fats: Option<Decimal>,
 }
 
 impl Dish {
@@ -52,9 +60,9 @@ impl PartialOrd for Dish {
 impl DishPrices {
     pub fn normalize(self) -> Self {
         Self {
-            students: self.students.with_prec(5).with_scale(2),
-            employees: self.employees.with_prec(5).with_scale(2),
-            guests: self.guests.with_prec(5).with_scale(2),
+            students: self.students.normalize().round_dp(2),
+            employees: self.employees.normalize().round_dp(2),
+            guests: self.guests.normalize().round_dp(2),
         }
     }
 }
@@ -63,9 +71,9 @@ impl DishNutrients {
     pub fn normalize(self) -> Self {
         Self {
             kjoules: self.kjoules,
-            carbohydrates: self.carbohydrates.map(|v| v.with_prec(6).with_scale(2)),
-            proteins: self.proteins.map(|v| v.with_prec(6).with_scale(2)),
-            fats: self.fats.map(|v| v.with_prec(6).with_scale(2)),
+            carbohydrates: self.carbohydrates.map(|v| v.normalize().round_dp(2)),
+            proteins: self.proteins.map(|v| v.normalize().round_dp(2)),
+            fats: self.fats.map(|v| v.normalize().round_dp(2)),
         }
     }
 }

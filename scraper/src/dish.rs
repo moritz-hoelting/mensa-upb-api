@@ -1,9 +1,8 @@
 use std::sync::LazyLock;
 
-use num_bigint::BigInt;
 use scraper::{ElementRef, Selector};
 use shared::DishType;
-use sqlx::types::BigDecimal;
+use sqlx::types::Decimal;
 
 use crate::util::normalize_price_bigdecimal;
 
@@ -20,9 +19,9 @@ static HTML_NUTRITIONS_SELECTOR: LazyLock<Selector> =
 pub struct Dish {
     pub name: String,
     pub image_src: Option<String>,
-    pub price_students: BigDecimal,
-    pub price_employees: BigDecimal,
-    pub price_guests: BigDecimal,
+    pub price_students: Decimal,
+    pub price_employees: Decimal,
+    pub price_guests: Decimal,
     pub vegetarian: bool,
     pub vegan: bool,
     pub dish_type: DishType,
@@ -32,22 +31,22 @@ pub struct Dish {
 #[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
 pub struct NutritionValues {
     pub kjoule: Option<i32>,
-    pub protein: Option<BigDecimal>,
-    pub carbs: Option<BigDecimal>,
-    pub fat: Option<BigDecimal>,
+    pub protein: Option<Decimal>,
+    pub carbs: Option<Decimal>,
+    pub fat: Option<Decimal>,
 }
 
 impl Dish {
     pub fn get_name(&self) -> &str {
         &self.name
     }
-    pub fn get_price_students(&self) -> &BigDecimal {
+    pub fn get_price_students(&self) -> &Decimal {
         &self.price_students
     }
-    pub fn get_price_employees(&self) -> &BigDecimal {
+    pub fn get_price_employees(&self) -> &Decimal {
         &self.price_employees
     }
-    pub fn get_price_guests(&self) -> &BigDecimal {
+    pub fn get_price_guests(&self) -> &Decimal {
         &self.price_guests
     }
     pub fn get_image_src(&self) -> Option<&str> {
@@ -185,9 +184,9 @@ impl NutritionValues {
     pub fn normalize(self) -> Self {
         Self {
             kjoule: self.kjoule,
-            protein: self.protein.map(|p| p.with_prec(6).with_scale(2)),
-            carbs: self.carbs.map(|c| c.with_prec(6).with_scale(2)),
-            fat: self.fat.map(|f| f.with_prec(6).with_scale(2)),
+            protein: self.protein.map(|p| p.normalize().round_dp(2)),
+            carbs: self.carbs.map(|c| c.normalize().round_dp(2)),
+            fat: self.fat.map(|f| f.normalize().round_dp(2)),
         }
     }
 }
@@ -198,18 +197,18 @@ impl PartialOrd for Dish {
     }
 }
 
-fn price_to_bigdecimal(s: Option<&str>) -> BigDecimal {
+fn price_to_bigdecimal(s: Option<&str>) -> Decimal {
     s.and_then(|p| {
         p.trim_end_matches(" €")
             .replace(',', ".")
-            .parse::<BigDecimal>()
+            .parse::<Decimal>()
             .ok()
     })
     .map(normalize_price_bigdecimal)
-    .unwrap_or_else(|| BigDecimal::from_bigint(BigInt::from(99999), 2))
+    .unwrap_or_else(|| Decimal::from(99999))
 }
 
-fn grams_to_bigdecimal(s: &str) -> Option<BigDecimal> {
+fn grams_to_bigdecimal(s: &str) -> Option<Decimal> {
     s.trim_end_matches("g")
         .replace(',', ".")
         .trim()

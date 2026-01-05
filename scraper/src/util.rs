@@ -4,69 +4,13 @@ use anyhow::Result;
 use chrono::NaiveDate;
 use futures::{Stream, StreamExt as _};
 use shared::{Canteen, DishType};
-use sqlx::{postgres::PgPoolOptions, types::BigDecimal, PgPool, PgTransaction};
+use sqlx::{postgres::PgPoolOptions, types::Decimal, PgPool, PgTransaction};
 
 use crate::{scrape_menu, Dish};
 
 pub fn get_db() -> Result<PgPool> {
     Ok(PgPoolOptions::new()
         .connect_lazy(&env::var("DATABASE_URL").expect("missing DATABASE_URL env variable"))?)
-}
-
-pub async fn scrape_canteens_at_days_and_insert(
-    db: &PgPool,
-    date_canteen_combinations: &[(NaiveDate, Canteen)],
-) -> Result<()> {
-    let (tx, mut rx) = tokio::sync::mpsc::channel::<(NaiveDate, Canteen, Vec<Dish>)>(128);
-
-    let mut transaction = db.begin().await?;
-
-    for (date, canteen) in date_canteen_combinations {
-        sqlx::query!(
-            "UPDATE meals SET is_latest = FALSE WHERE date = $1 AND canteen = $2 AND is_latest = TRUE",
-            date,
-            canteen.get_identifier()
-        )
-        .execute(&mut *transaction)
-        .await
-        .ok();
-    }
-
-    let insert_handle = tokio::spawn(async move {
-        while let Some((date, canteen, menu)) = rx.recv().await {
-            add_menu_to_db(&mut transaction, &date, canteen, menu).await?;
-        }
-
-        transaction.commit().await
-    });
-
-    let errs = scrape_canteens_at_days(date_canteen_combinations)
-        .then(|res| {
-            let tx = tx.clone();
-            async move {
-                match res {
-                    Ok((date, canteen, menu)) => {
-                        tx.send((date, canteen, menu)).await.ok();
-                        Ok(())
-                    }
-                    Err(err) => {
-                        tracing::error!("Error scraping menu: {err}");
-                        Err(err)
-                    }
-                }
-            }
-        })
-        .collect::<Vec<_>>()
-        .await;
-
-    drop(tx);
-    insert_handle.await??;
-
-    if let Some(err) = errs.into_iter().find_map(Result::err) {
-        return Err(err);
-    }
-
-    Ok(())
 }
 
 pub fn scrape_canteens_at_days<'a>(
@@ -125,6 +69,6 @@ pub async fn add_menu_to_db(
     Ok(())
 }
 
-pub fn normalize_price_bigdecimal(price: BigDecimal) -> BigDecimal {
-    price.with_prec(6).with_scale(2)
+pub fn normalize_price_bigdecimal(price: Decimal) -> Decimal {
+    price.normalize().round_dp(2)
 }

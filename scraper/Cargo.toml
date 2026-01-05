@@ -5,8 +5,8 @@ license.workspace = true
 authors.workspace = true
 repository.workspace = true
 readme.workspace = true
-version = "0.2.0"
-edition = "2021"
+version = "0.2.1"
+edition = "2024"
 publish = false
 
 [dependencies]
@@ -16,11 +16,10 @@ const_format = "0.2.33"
 dotenvy = { workspace = true }
 futures = { workspace = true }
 itertools = { workspace = true }
-num-bigint = "0.4.6"
 reqwest = { version = "0.12.9", default-features = false, features = ["charset", "rustls-tls", "http2"] }
 scraper = "0.25.0"
 shared = { path = "../shared" }
-sqlx = { workspace = true, features = ["runtime-tokio-rustls", "postgres", "migrate", "chrono", "uuid", "bigdecimal"] }
+sqlx = { workspace = true, features = ["runtime-tokio-rustls", "postgres", "migrate", "chrono", "uuid", "rust_decimal"] }
 strum = { workspace = true, features = ["derive"] }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 tracing = { workspace = true }

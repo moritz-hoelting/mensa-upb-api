@@ -12,6 +12,13 @@ use mensa_upb_api::get_governor;
 use sqlx::postgres::PgPoolOptions;
 use tracing::{debug, error, info, level_filters::LevelFilter};
 use tracing_subscriber::EnvFilter;
+use utoipa::OpenApi as _;
+use utoipa_actix_web::AppExt as _;
+use utoipa_rapidoc::RapiDoc;
+
+#[derive(utoipa::OpenApi)]
+#[openapi(info(title = "Mensa UPB API"))]
+struct ApiDoc;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -80,7 +87,13 @@ async fn main() -> Result<()> {
             .wrap(Governor::new(&governor_conf))
             .wrap(cors)
             .app_data(web::Data::new(db.clone()))
+            .into_utoipa_app()
+            .openapi(ApiDoc::openapi())
             .configure(mensa_upb_api::endpoints::configure)
+            .openapi_service(|api| {
+                RapiDoc::with_openapi("/api-docs/openapi.json", api).path("/rapidoc")
+            })
+            .into_app()
     })
     .bind((interface.as_str(), port))?
     .run()

@@ -10,7 +10,6 @@ pub use dish::Dish;
 pub use menu::scrape_menu;
 pub use refresh::check_refresh;
 use shared::Canteen;
-pub use util::scrape_canteens_at_days_and_insert;
 
 #[derive(Debug, Clone)]
 struct CustomError(String);

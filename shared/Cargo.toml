@@ -11,3 +11,4 @@ readme.workspace = true
 serde = { workspace = true, features = ["derive"] }
 strum = { workspace = true, features = ["derive"] }
 sqlx = { workspace = true }
+utoipa = { workspace = true }

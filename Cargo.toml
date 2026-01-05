@@ -10,7 +10,7 @@ resolver = "2"
 
 [workspace.package]
 license = "MIT"
-authors = ["Moritz Hölting"]
+authors = ["Moritz Hölting <moritz@hoelting.dev>"]
 repository = "https://github.com/moritz-hoelting/mensa-upb-api"
 readme = "README.md"
 
@@ -20,9 +20,11 @@ chrono = "0.4.42"
 dotenvy = "0.15.7"
 futures = "0.3.31"
 itertools = "0.14.0"
+rust_decimal = "1.39.0"
 serde = { version = "1.0.228", features = ["derive"] }
 sqlx = "0.8.2"
 strum = "0.27.2"
-tokio = "1.48.0"
-tracing = "0.1.43"
+tokio = "1.49.0"
+tracing = "0.1.44"
 tracing-subscriber = "0.3.22"
+utoipa = "5.4.0"

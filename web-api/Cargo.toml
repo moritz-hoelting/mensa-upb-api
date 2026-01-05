@@ -5,8 +5,8 @@ license.workspace = true
 authors.workspace = true
 repository.workspace = true
 readme.workspace = true
-version = "0.4.0"
-edition = "2021"
+version = "0.4.1"
+edition = "2024"
 publish = false
 
 [dependencies]
@@ -14,16 +14,19 @@ actix-cors = "0.7.1"
 actix-governor = { version = "0.10.0", features = ["log"] }
 actix-web = "4.12.1"
 anyhow = { workspace = true }
-bigdecimal = { version = "0.4.9", features = ["serde"] }
 chrono = { workspace = true, features = ["serde"] }
 dotenvy = { workspace = true }
 itertools = { workspace = true }
 mensa-upb-scraper = { path = "../scraper" }
+rust_decimal = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = "1.0.145"
 shared = { path = "../shared" }
-sqlx = { workspace = true, features = ["runtime-tokio-rustls", "postgres", "migrate", "chrono", "uuid", "bigdecimal"] }
+sqlx = { workspace = true, features = ["runtime-tokio-rustls", "postgres", "migrate", "chrono", "uuid", "rust_decimal"] }
 strum = { workspace = true, features = ["derive"] }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 tracing = "0.1.43"
 tracing-subscriber = { workspace = true, features = ["env-filter"] }
+utoipa = { workspace = true, features = ["actix_extras", "chrono", "decimal"] }
+utoipa-actix-web = "0.1.2"
+utoipa-rapidoc = { version = "6.0.0", features = ["actix-web"] }

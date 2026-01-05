@@ -5,3 +5,9 @@ use shared::Canteen;
 pub fn parse_canteens_comma_separated(s: &str) -> Vec<Result<Canteen, String>> {
     s.split(',').map(Canteen::from_str).collect()
 }
+
+#[expect(dead_code)]
+#[derive(utoipa::ToSchema)]
+pub(crate) struct GenericServerError {
+    error: &'static str,
+}
