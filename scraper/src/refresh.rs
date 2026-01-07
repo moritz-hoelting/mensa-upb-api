@@ -33,6 +33,11 @@ pub async fn check_refresh(db: &sqlx::PgPool, date: NaiveDate, canteens: &[Cante
         return false;
     }
 
+    if date < Utc::now().date_naive() {
+        tracing::trace!("Not refreshing menu for date {date} as it is in the past");
+        return false;
+    }
+
     let canteens_needing_refresh = match sqlx::query!(
         r#"SELECT canteen, max(scraped_at) AS "scraped_at!" FROM canteens_scraped WHERE canteen = ANY($1) AND scraped_for = $2 GROUP BY canteen"#,
         &canteens

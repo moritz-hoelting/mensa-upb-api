@@ -42,7 +42,7 @@ WORKDIR /app
 
 RUN apk add --no-cache ca-certificates tzdata dcron tini
 
-RUN echo "0 0 * * * /app/mensa-upb-scraper >> /var/log/cron.log 2>&1" \
+RUN echo "0 0/8 * * * /app/mensa-upb-scraper >> /var/log/cron.log 2>&1" \
     > /etc/crontabs/root && \
     touch /var/log/cron.log
 
