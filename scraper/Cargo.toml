@@ -9,9 +9,14 @@ version = "0.2.1"
 edition = "2024"
 publish = false
 
+[[bin]]
+name = "scraper-cli"
+path = "src/bin/cli.rs"
+
 [dependencies]
 anyhow = { workspace = true }
 chrono = { workspace = true }
+clap = { version = "4.5.54", features = ["derive", "env"] }
 const_format = "0.2.33"
 dotenvy = { workspace = true }
 futures = { workspace = true }

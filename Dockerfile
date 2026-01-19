@@ -32,7 +32,8 @@ RUN cargo chef cook --release --recipe-path recipe.json
 COPY . .
 RUN OFFLINE=true cargo build --release \
     --bin mensa-upb-api \
-    --bin mensa-upb-scraper
+    --bin mensa-upb-scraper \
+    --bin scraper-cli
 
 # =====================================================
 # Runtime image: scraper (cron-based)
@@ -47,6 +48,7 @@ RUN echo "0 0/8 * * * /app/mensa-upb-scraper >> /var/log/cron.log 2>&1" \
     touch /var/log/cron.log
 
 COPY --from=builder /app/target/release/mensa-upb-scraper /app/mensa-upb-scraper
+COPY --from=builder /app/target/release/scraper-cli /app/scraper-cli
 
 ENTRYPOINT ["/sbin/tini", "--"]
 CMD sh -c 'env > /etc/environment && crond -l 2 && tail -f /var/log/cron.log'

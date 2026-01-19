@@ -28,7 +28,7 @@ impl Menu {
             .collect::<Vec<_>>();
 
         if allow_refresh {
-            check_refresh(db, date, canteens).await;
+            check_refresh(db, date, canteens, false).await;
         };
 
         let result = sqlx::query!(r#"SELECT name, array_agg(DISTINCT canteen ORDER BY canteen) AS "canteens!", dish_type AS "dish_type: DishType", image_src, price_students, price_employees, price_guests, vegan, vegetarian 

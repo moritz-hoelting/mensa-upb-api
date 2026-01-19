@@ -2,8 +2,8 @@ use std::sync::LazyLock;
 
 use anyhow::Result;
 use chrono::{Duration, Utc};
-use futures::{future, StreamExt};
-use mensa_upb_scraper::{check_refresh, util, FILTER_CANTEENS};
+use futures::future;
+use mensa_upb_scraper::{FILTER_CANTEENS, check_refresh, util};
 use shared::Canteen;
 use strum::IntoEnumIterator as _;
 use tracing::level_filters::LevelFilter;
@@ -36,16 +36,10 @@ async fn main() -> Result<()> {
         .map(|d| (Utc::now() + Duration::days(d)).date_naive())
         .map(|date| {
             let db = db.clone();
-            tokio::spawn(async move { check_refresh(&db, date, &CANTEENS).await })
+            tokio::spawn(async move { check_refresh(&db, date, &CANTEENS, false).await })
         });
 
     future::join_all(handles).await;
-
-    futures::stream::iter((0..7).map(|d| (Utc::now() + Duration::days(d)).date_naive()))
-        .for_each_concurrent(None, async |date| {
-            check_refresh(&db, date, &CANTEENS).await;
-        })
-        .await;
 
     tracing::info!("Finished scraping menu");
 

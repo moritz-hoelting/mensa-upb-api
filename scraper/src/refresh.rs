@@ -27,39 +27,49 @@ static NON_FILTERED_CANTEENS: LazyLock<Vec<Canteen>> = LazyLock::new(|| {
 });
 
 #[tracing::instrument(skip(db))]
-pub async fn check_refresh(db: &sqlx::PgPool, date: NaiveDate, canteens: &[Canteen]) -> bool {
-    if date > Utc::now().date_naive() + chrono::Duration::days(31) {
+pub async fn check_refresh(
+    db: &sqlx::PgPool,
+    date: NaiveDate,
+    canteens: &[Canteen],
+    force: bool,
+) -> bool {
+    if !force && date > Utc::now().date_naive() + chrono::Duration::days(31) {
         tracing::debug!("Not refreshing menu for date {date} as it is too far in the future");
         return false;
     }
 
-    if date < Utc::now().date_naive() {
+    if !force && date < Utc::now().date_naive() {
         tracing::trace!("Not refreshing menu for date {date} as it is in the past");
         return false;
     }
 
-    let canteens_needing_refresh = match sqlx::query!(
-        r#"SELECT canteen, max(scraped_at) AS "scraped_at!" FROM canteens_scraped WHERE canteen = ANY($1) AND scraped_for = $2 GROUP BY canteen"#,
-        &canteens
-            .iter()
-            .map(|c| c.get_identifier().to_string())
-            .collect::<Vec<_>>(),
-        date
-    )
-    .fetch_all(db)
-    .await
-    {
-        Ok(v) => v
-            .iter()
-            .map(|r| (Canteen::from_str(&r.canteen).expect("malformed db entry"), Some(r.scraped_at)))
-            .chain(NON_FILTERED_CANTEENS.iter().filter(|c| canteens.contains(c)).map(|c| (*c, None)))
-            .unique_by(|(c, _)| *c)
-            .filter(|(_, scraped_at)| scraped_at.is_none_or(|scraped_at| needs_refresh(scraped_at, date)))
-            .map(|(c, _)| c)
-            .collect::<BTreeSet<_>>(),
-        Err(err) => {
-            tracing::error!("Error checking for existing scrapes: {}", err);
-            return false;
+    let canteens_needing_refresh = if force {
+        canteens.iter().cloned().collect::<BTreeSet<_>>()
+    } else {
+        match sqlx::query!(
+            r#"SELECT canteen, max(scraped_at) AS "scraped_at!" FROM canteens_scraped WHERE canteen = ANY($1) AND scraped_for = $2 GROUP BY canteen"#,
+            &canteens
+                .iter()
+                .map(|c| c.get_identifier().to_string())
+                .collect::<Vec<_>>(),
+            date
+        )
+        .fetch_all(db)
+        .await
+        {
+            Ok(v) => v
+                .iter()
+                .map(|r| (Canteen::from_str(&r.canteen).expect("malformed db entry"), Some(r.scraped_at)))
+                .chain(NON_FILTERED_CANTEENS.iter().filter(|c| canteens.contains(c)).map(|c| (*c, None)))
+                .unique_by(|(c, _)| *c)
+                .filter(|(c, scraped_at)| 
+                    canteens.contains(c) && scraped_at.is_none_or(|scraped_at| needs_refresh(scraped_at, date)))
+                .map(|(c, _)| c)
+                .collect::<BTreeSet<_>>(),
+            Err(err) => {
+                tracing::error!("Error checking for existing scrapes: {}", err);
+                return false;
+            }
         }
     };
 
