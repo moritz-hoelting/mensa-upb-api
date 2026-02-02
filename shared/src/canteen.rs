@@ -3,21 +3,7 @@ use std::str::FromStr;
 use serde::{Deserialize, Serialize};
 use strum::EnumIter;
 
-#[derive(
-    Debug,
-    Clone,
-    Copy,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    EnumIter,
-    Hash,
-    Serialize,
-    Deserialize,
-    utoipa::ToSchema,
-)]
-#[serde(rename_all = "kebab-case")]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, EnumIter, Hash, utoipa::ToSchema)]
 pub enum Canteen {
     Forum,
     Academica,
@@ -59,5 +45,24 @@ impl FromStr for Canteen {
             "atrium" => Ok(Self::Atrium),
             invalid => Err(format!("Invalid canteen identifier: {invalid}")),
         }
+    }
+}
+
+impl Serialize for Canteen {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_str(self.get_identifier())
+    }
+}
+
+impl<'a> Deserialize<'a> for Canteen {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'a>,
+    {
+        let s = String::deserialize(deserializer)?;
+        Canteen::from_str(&s).map_err(serde::de::Error::custom)
     }
 }

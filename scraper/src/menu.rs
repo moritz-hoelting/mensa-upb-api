@@ -5,7 +5,7 @@ use chrono::NaiveDate;
 use scraper::{Html, Selector};
 use shared::{Canteen, DishType};
 
-use crate::{canteen::CanteenExt as _, CustomError, Dish};
+use crate::{CustomError, Dish, canteen::CanteenExt as _};
 
 static HTML_MAIN_DISHES_TBODY_SELECTOR: LazyLock<Selector> = LazyLock::new(|| {
     Selector::parse("table.table-dishes.main-dishes > tbody").expect("Failed to parse selector")
