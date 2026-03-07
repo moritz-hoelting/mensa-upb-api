@@ -23,7 +23,9 @@
               "Enum": [
                 "main",
                 "side",
-                "dessert"
+                "soup",
+                "dessert",
+                "other"
               ]
             }
           }

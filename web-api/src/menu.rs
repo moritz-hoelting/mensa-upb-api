@@ -12,7 +12,9 @@ pub struct Menu {
     date: NaiveDate,
     main_dishes: Vec<Dish>,
     side_dishes: Vec<Dish>,
-    desserts: Vec<Dish>,
+    soup_dishes: Vec<Dish>,
+    dessert_dishes: Vec<Dish>,
+    other_dishes: Vec<Dish>,
 }
 
 impl Menu {
@@ -41,7 +43,9 @@ impl Menu {
 
         let mut main_dishes = Vec::new();
         let mut side_dishes = Vec::new();
-        let mut desserts = Vec::new();
+        let mut soup_dishes = Vec::new();
+        let mut dessert_dishes = Vec::new();
+        let mut other_dishes = Vec::new();
 
         for row in result {
             let dish = Dish {
@@ -65,8 +69,12 @@ impl Menu {
                 main_dishes.push(dish);
             } else if row.dish_type == DishType::Side {
                 side_dishes.push(dish);
+            } else if row.dish_type == DishType::Soup {
+                soup_dishes.push(dish);
             } else if row.dish_type == DishType::Dessert {
-                desserts.push(dish);
+                dessert_dishes.push(dish);
+            } else if row.dish_type == DishType::Other {
+                other_dishes.push(dish);
             }
         }
 
@@ -74,7 +82,9 @@ impl Menu {
             date,
             main_dishes,
             side_dishes,
-            desserts,
+            soup_dishes,
+            dessert_dishes,
+            other_dishes,
         })
     }
 
@@ -86,14 +96,24 @@ impl Menu {
         &self.side_dishes
     }
 
-    pub fn get_desserts(&self) -> &[Dish] {
-        &self.desserts
+    pub fn get_soup_dishes(&self) -> &[Dish] {
+        &self.soup_dishes
+    }
+
+    pub fn get_dessert_dishes(&self) -> &[Dish] {
+        &self.dessert_dishes
+    }
+
+    pub fn get_other_dishes(&self) -> &[Dish] {
+        &self.other_dishes
     }
 
     pub fn merged(self, other: Self) -> Self {
         let mut main_dishes = self.main_dishes;
         let mut side_dishes = self.side_dishes;
-        let mut desserts = self.desserts;
+        let mut soup_dishes = self.soup_dishes;
+        let mut dessert_dishes = self.dessert_dishes;
+        let mut other_dishes = self.other_dishes;
 
         for dish in other.main_dishes {
             if let Some(existing) = main_dishes.iter_mut().find(|d| dish.same_as(d)) {
@@ -109,11 +129,25 @@ impl Menu {
                 side_dishes.push(dish);
             }
         }
-        for dish in other.desserts {
-            if let Some(existing) = desserts.iter_mut().find(|d| dish.same_as(d)) {
+        for dish in other.soup_dishes {
+            if let Some(existing) = soup_dishes.iter_mut().find(|d| dish.same_as(d)) {
                 existing.merge(dish);
             } else {
-                desserts.push(dish);
+                soup_dishes.push(dish);
+            }
+        }
+        for dish in other.dessert_dishes {
+            if let Some(existing) = dessert_dishes.iter_mut().find(|d| dish.same_as(d)) {
+                existing.merge(dish);
+            } else {
+                dessert_dishes.push(dish);
+            }
+        }
+        for dish in other.other_dishes {
+            if let Some(existing) = other_dishes.iter_mut().find(|d| dish.same_as(d)) {
+                existing.merge(dish);
+            } else {
+                other_dishes.push(dish);
             }
         }
 
@@ -121,7 +155,9 @@ impl Menu {
             date: self.date,
             main_dishes,
             side_dishes,
-            desserts,
+            soup_dishes,
+            dessert_dishes,
+            other_dishes,
         }
     }
 }

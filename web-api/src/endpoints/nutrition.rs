@@ -1,4 +1,4 @@
-use actix_web::{get, web, HttpResponse, Responder};
+use actix_web::{HttpResponse, Responder, get, web};
 use chrono::NaiveDate;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -39,14 +39,14 @@ async fn nutrition(
     let res = if let Some(date) = query.date {
         sqlx::query_as!(
             DishNutrients,
-            r#"SELECT kjoules, proteins, carbohydrates, fats FROM meals m WHERE is_latest = TRUE AND LOWER("name") = $1 AND date = $2 LIMIT 1;"#,
+            r#"SELECT kjoules, proteins, carbohydrates, fats, saturated_fats FROM meals m WHERE is_latest = TRUE AND LOWER("name") = $1 AND date = $2 LIMIT 1;"#,
             dish_name.to_lowercase(),
             date,
         ).fetch_optional(db).await
     } else {
         sqlx::query_as!(
             DishNutrients,
-            r#"SELECT kjoules, proteins, carbohydrates, fats FROM meals m WHERE is_latest = TRUE AND LOWER("name") = $1 ORDER BY date DESC LIMIT 1;"#,
+            r#"SELECT kjoules, proteins, carbohydrates, fats, saturated_fats FROM meals m WHERE is_latest = TRUE AND LOWER("name") = $1 ORDER BY date DESC LIMIT 1;"#,
             dish_name.to_lowercase(),
         ).fetch_optional(db).await
     };

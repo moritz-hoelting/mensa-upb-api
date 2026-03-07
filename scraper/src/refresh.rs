@@ -95,7 +95,7 @@ pub async fn check_refresh(
             .collect::<HashSet<_>>();
 
         let db_data = sqlx::query!(
-            r#"SELECT canteen, name, image_src, price_students, price_employees, price_guests, vegetarian, vegan, dish_type AS "dish_type: DishType", kjoules, proteins, carbohydrates, fats FROM meals WHERE date = $1 AND is_latest = TRUE AND canteen = ANY($2)"#,
+            r#"SELECT canteen, name, image_src, price_students, price_employees, price_guests, vegetarian, vegan, dish_type AS "dish_type: DishType", kjoules, proteins, carbohydrates, fats, saturated_fats FROM meals WHERE date = $1 AND is_latest = TRUE AND canteen = ANY($2)"#,
             date,
             &canteens_needing_refresh
                 .iter()
@@ -118,6 +118,7 @@ pub async fn check_refresh(
                         protein: r.proteins,
                         carbs: r.carbohydrates,
                         fat: r.fats,
+                        saturated_fat: r.saturated_fats,
                     }.normalize(),
                 }
         )

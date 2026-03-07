@@ -4,9 +4,9 @@ use anyhow::Result;
 use chrono::NaiveDate;
 use futures::{Stream, StreamExt as _};
 use shared::{Canteen, DishType};
-use sqlx::{postgres::PgPoolOptions, types::Decimal, PgPool, PgTransaction};
+use sqlx::{PgPool, PgTransaction, postgres::PgPoolOptions, types::Decimal};
 
-use crate::{scrape_menu, Dish};
+use crate::{Dish, scrape_menu};
 
 pub fn get_db() -> Result<PgPool> {
     Ok(PgPoolOptions::new()
@@ -17,7 +17,7 @@ pub fn scrape_canteens_at_days<'a>(
     date_canteen_combinations: &'a [(NaiveDate, Canteen)],
 ) -> impl Stream<Item = Result<(NaiveDate, Canteen, Vec<Dish>)>> + 'a {
     futures::stream::iter(date_canteen_combinations).then(|(date, canteen)| async move {
-        scrape_menu(date, *canteen)
+        scrape_menu(date, date, *canteen)
             .await
             .map(|menu| (*date, *canteen, menu))
     })
@@ -30,7 +30,9 @@ pub async fn add_menu_to_db(
     menu: Vec<Dish>,
 ) -> Result<(), sqlx::Error> {
     if !menu.is_empty() {
-        let mut query = sqlx::QueryBuilder::new("INSERT INTO meals (date,canteen,name,dish_type,image_src,price_students,price_employees,price_guests,vegan,vegetarian,kjoules,proteins,carbohydrates,fats) ");
+        let mut query = sqlx::QueryBuilder::new(
+            "INSERT INTO meals (date,canteen,name,dish_type,image_src,price_students,price_employees,price_guests,vegan,vegetarian,kjoules,proteins,carbohydrates,fats) ",
+        );
 
         query
             .push_values(menu, |mut sep, item| {
@@ -71,4 +73,8 @@ pub async fn add_menu_to_db(
 
 pub fn normalize_price_bigdecimal(price: Decimal) -> Decimal {
     price.normalize().round_dp(2)
+}
+
+pub fn first_non_empty_string(strings: impl IntoIterator<Item = String>) -> Option<String> {
+    strings.into_iter().find(|s| !s.trim().is_empty())
 }

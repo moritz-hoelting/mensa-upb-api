@@ -17,12 +17,14 @@ path = "src/bin/cli.rs"
 anyhow = { workspace = true }
 chrono = { workspace = true }
 clap = { version = "4.5.54", features = ["derive", "env"] }
-const_format = "0.2.33"
 dotenvy = { workspace = true }
+extend = "1.2.0"
 futures = { workspace = true }
+html-escape = "0.2.13"
 itertools = { workspace = true }
-reqwest = { version = "0.12.9", default-features = false, features = ["charset", "rustls-tls", "http2"] }
-scraper = "0.25.0"
+lazy-regex = "3.6.0"
+reqwest = { version = "0.12.9", default-features = false, features = ["charset", "json", "rustls-tls", "http2"] }
+serde = { workspace = true, features = ["derive"] }
 shared = { path = "../shared" }
 sqlx = { workspace = true, features = ["runtime-tokio-rustls", "postgres", "migrate", "chrono", "uuid", "rust_decimal"] }
 strum = { workspace = true, features = ["derive"] }

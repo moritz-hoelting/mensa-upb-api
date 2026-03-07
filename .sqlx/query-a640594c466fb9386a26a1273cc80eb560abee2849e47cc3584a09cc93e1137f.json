@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT canteen, name, image_src, price_students, price_employees, price_guests, vegetarian, vegan, dish_type AS \"dish_type: DishType\", kjoules, proteins, carbohydrates, fats FROM meals WHERE date = $1 AND is_latest = TRUE AND canteen = ANY($2)",
+  "query": "SELECT canteen, name, image_src, price_students, price_employees, price_guests, vegetarian, vegan, dish_type AS \"dish_type: DishType\", kjoules, proteins, carbohydrates, fats, saturated_fats FROM meals WHERE date = $1 AND is_latest = TRUE AND canteen = ANY($2)",
   "describe": {
     "columns": [
       {
@@ -53,7 +53,9 @@
               "Enum": [
                 "main",
                 "side",
-                "dessert"
+                "soup",
+                "dessert",
+                "other"
               ]
             }
           }
@@ -78,6 +80,11 @@
         "ordinal": 12,
         "name": "fats",
         "type_info": "Numeric"
+      },
+      {
+        "ordinal": 13,
+        "name": "saturated_fats",
+        "type_info": "Numeric"
       }
     ],
     "parameters": {
@@ -99,8 +106,9 @@
       true,
       true,
       true,
+      true,
       true
     ]
   },
-  "hash": "87707bff13b4ce6ff47d2f79ee5d40b677042a20c217acc347ecdd04ebf3e6e0"
+  "hash": "a640594c466fb9386a26a1273cc80eb560abee2849e47cc3584a09cc93e1137f"
 }

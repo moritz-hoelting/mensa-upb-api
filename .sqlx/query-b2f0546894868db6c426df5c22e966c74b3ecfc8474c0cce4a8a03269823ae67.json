@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT kjoules, proteins, carbohydrates, fats FROM meals m WHERE is_latest = TRUE AND LOWER(\"name\") = $1 AND date = $2 LIMIT 1;",
+  "query": "SELECT kjoules, proteins, carbohydrates, fats, saturated_fats FROM meals m WHERE is_latest = TRUE AND LOWER(\"name\") = $1 AND date = $2 LIMIT 1;",
   "describe": {
     "columns": [
       {
@@ -22,6 +22,11 @@
         "ordinal": 3,
         "name": "fats",
         "type_info": "Numeric"
+      },
+      {
+        "ordinal": 4,
+        "name": "saturated_fats",
+        "type_info": "Numeric"
       }
     ],
     "parameters": {
@@ -34,8 +39,9 @@
       true,
       true,
       true,
+      true,
       true
     ]
   },
-  "hash": "d7d20b101fbed8dfe7ff33ac7a6a0e4cddfaa36050c5482818b6ee4783f8173d"
+  "hash": "b2f0546894868db6c426df5c22e966c74b3ecfc8474c0cce4a8a03269823ae67"
 }

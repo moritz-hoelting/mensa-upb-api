@@ -9,7 +9,9 @@ pub use canteen::Canteen;
 pub enum DishType {
     Main,
     Side,
+    Soup,
     Dessert,
+    Other,
 }
 
 impl Display for DishType {
@@ -17,7 +19,9 @@ impl Display for DishType {
         let s = match self {
             Self::Main => "main",
             Self::Side => "side",
+            Self::Soup => "soup",
             Self::Dessert => "dessert",
+            Self::Other => "other",
         };
         f.write_str(s)
     }

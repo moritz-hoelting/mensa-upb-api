@@ -7,8 +7,6 @@ use strum::EnumIter;
 pub enum Canteen {
     Forum,
     Academica,
-    Picknick,
-    BonaVista,
     GrillCafe,
     ZM2,
     Basilica,
@@ -20,8 +18,6 @@ impl Canteen {
         match self {
             Self::Forum => "forum",
             Self::Academica => "academica",
-            Self::Picknick => "picknick",
-            Self::BonaVista => "bona-vista",
             Self::GrillCafe => "grillcafe",
             Self::ZM2 => "zm2",
             Self::Basilica => "basilica",
@@ -37,8 +33,6 @@ impl FromStr for Canteen {
         match s {
             "forum" => Ok(Self::Forum),
             "academica" => Ok(Self::Academica),
-            "picknick" => Ok(Self::Picknick),
-            "bona-vista" => Ok(Self::BonaVista),
             "grillcafe" => Ok(Self::GrillCafe),
             "zm2" => Ok(Self::ZM2),
             "basilica" => Ok(Self::Basilica),

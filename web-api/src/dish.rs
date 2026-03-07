@@ -26,7 +26,8 @@ pub struct DishPrices {
         "kjoules": 1500,
         "carbohydrates": "45.5",
         "proteins": "30.0",
-        "fats": "10.0"
+        "fats": "10.0",
+        "saturated_fats": "2.5"
     })
 ))]
 pub struct DishNutrients {
@@ -34,6 +35,7 @@ pub struct DishNutrients {
     pub carbohydrates: Option<Decimal>,
     pub proteins: Option<Decimal>,
     pub fats: Option<Decimal>,
+    pub saturated_fats: Option<Decimal>,
 }
 
 impl Dish {
@@ -74,6 +76,7 @@ impl DishNutrients {
             carbohydrates: self.carbohydrates.map(|v| v.normalize().round_dp(2)),
             proteins: self.proteins.map(|v| v.normalize().round_dp(2)),
             fats: self.fats.map(|v| v.normalize().round_dp(2)),
+            saturated_fats: self.saturated_fats.map(|v| v.normalize().round_dp(2)),
         }
     }
 }
