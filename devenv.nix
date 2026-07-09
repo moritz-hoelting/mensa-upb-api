@@ -6,7 +6,10 @@
   ...
 }:
 {
-  packages = [ pkgs.git pkgs.sqlx-cli ];
+  packages = [
+    pkgs.git
+    pkgs.sqlx-cli
+  ];
 
   languages.rust.enable = true;
 

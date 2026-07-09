@@ -6,27 +6,32 @@
   };
 
   outputs =
-    { self, nixpkgs }:
-    let
-      system = "x86_64-linux";
-      pkgs = nixpkgs.legacyPackages.${system};
-    in
     {
+      self,
+      nixpkgs,
+      flake-utils,
+      ...
+    }:
+    flake-utils.lib.eachDefaultSystem (
+      system:
+      let
+        pkgs = import nixpkgs { inherit system; };
+      in
+      {
+        packages.default = pkgs.callPackage ./default.nix { };
 
-      packages.${system}.default = pkgs.callPackage ./default.nix { };
-
-      devShells.${system}.default = pkgs.mkShell {
-        buildInputs = with pkgs; [
-          devenv
-          cargo
-          rustc
-          rustfmt
-          clippy
-          rust-analyzer
-          sqlx-cli
-        ];
-        env.RUST_SRC_PATH = pkgs.rust.packages.stable.rustPlatform.rustLibSrc;
-      };
-
-    };
+        devShells.default = pkgs.mkShell {
+          buildInputs = with pkgs; [
+            devenv
+            cargo
+            rustc
+            rustfmt
+            clippy
+            rust-analyzer
+            sqlx-cli
+          ];
+          env.RUST_SRC_PATH = pkgs.rust.packages.stable.rustPlatform.rustLibSrc;
+        };
+      }
+    );
 }
